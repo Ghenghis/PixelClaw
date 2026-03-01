@@ -8,6 +8,9 @@ dist/
 out/
 *.vsix
 
+# Release binaries — never commit, built by CI
+releases/
+
 # Runtime data
 data/
 *.db
