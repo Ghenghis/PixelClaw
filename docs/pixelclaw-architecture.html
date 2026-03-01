@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelClaw — Architecture & Gap Analysis</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --bg:       #080c10;
+    --bg2:      #0d1218;
+    --bg3:      #111820;
+    --border:   #1a2535;
+    --border2:  #243045;
+    --accent:   #00d4ff;
+    --accent2:  #ff6b35;
+    --accent3:  #7fff00;
+    --warn:     #ffcc00;
+    --danger:   #ff3355;
+    --muted:    #3a4a5e;
+    --text:     #c8d8e8;
+    --text2:    #6a8aaa;
+    --glow:     rgba(0,212,255,0.15);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* SCANLINE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none; z-index: 9999;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(90deg, #050810, #0a1520, #050810);
+    border-bottom: 2px solid var(--accent);
+    padding: 12px 24px;
+    display: flex; align-items: center; gap: 16px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 0 40px rgba(0,212,255,0.2);
+  }
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 22px; font-weight: 900;
+    color: var(--accent);
+    text-shadow: 0 0 20px var(--accent), 0 0 40px rgba(0,212,255,0.4);
+    letter-spacing: 4px;
+  }
+  .logo span { color: var(--accent2); }
+  .header-sub {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text2); font-size: 11px;
+    border-left: 1px solid var(--border2); padding-left: 16px;
+  }
+  .header-tags { margin-left: auto; display: flex; gap: 8px; }
+  .tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; padding: 3px 8px;
+    border-radius: 2px; letter-spacing: 1px;
+  }
+  .tag-ok   { background: rgba(127,255,0,0.1); color: var(--accent3); border: 1px solid rgba(127,255,0,0.3); }
+  .tag-warn { background: rgba(255,204,0,0.1); color: var(--warn); border: 1px solid rgba(255,204,0,0.3); }
+  .tag-miss { background: rgba(255,51,85,0.1); color: var(--danger); border: 1px solid rgba(255,51,85,0.3); }
+  .tag-blue { background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.3); }
+
+  /* NAV TABS */
+  .nav-tabs {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: flex; gap: 0; padding: 0 16px;
+    overflow-x: auto;
+  }
+  .tab {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; padding: 10px 18px;
+    cursor: pointer; color: var(--text2);
+    border-bottom: 2px solid transparent;
+    letter-spacing: 1px; text-transform: uppercase;
+    transition: all 0.2s; white-space: nowrap;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* LAYOUT */
+  .main { padding: 16px; max-width: 1600px; margin: 0 auto; }
+  .panel-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px; margin-bottom: 12px;
+  }
+  .panel-grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .panel-grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .span2 { grid-column: span 2; }
+  .span3 { grid-column: span 3; }
+  .span4 { grid-column: span 4; }
+
+  /* PANELS */
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .panel:hover { border-color: var(--border2); }
+  .panel-hdr {
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 12px;
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--text2);
+  }
+  .panel-hdr .icon { color: var(--accent); font-size: 13px; }
+  .panel-hdr .badge {
+    margin-left: auto; font-size: 10px;
+    padding: 2px 6px; border-radius: 2px;
+  }
+  .panel-body { padding: 12px; }
+
+  /* SECTION TABS CONTENT */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* STATUS ROWS */
+  .status-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+  }
+  .status-row:last-child { border-bottom: none; }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    margin-top: 4px; flex-shrink: 0;
+  }
+  .dot-ok   { background: var(--accent3); box-shadow: 0 0 6px var(--accent3); }
+  .dot-warn { background: var(--warn);    box-shadow: 0 0 6px var(--warn); }
+  .dot-miss { background: var(--danger);  box-shadow: 0 0 6px var(--danger); }
+  .dot-plan { background: var(--accent);  box-shadow: 0 0 6px var(--accent); }
+  .status-row .label { font-weight: 600; color: var(--text); font-size: 13px; }
+  .status-row .desc  { color: var(--text2); font-size: 12px; margin-top: 1px; }
+
+  /* LAYER DIAGRAM */
+  .layer-stack { display: flex; flex-direction: column; gap: 8px; }
+  .layer {
+    border-radius: 4px; padding: 10px 14px;
+    display: flex; align-items: center; gap: 12px;
+    position: relative; overflow: hidden;
+  }
+  .layer::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+  .layer-ui    { background: rgba(0,212,255,0.06); border: 1px solid rgba(0,212,255,0.2); }
+  .layer-ui::before { background: var(--accent); }
+  .layer-bridge{ background: rgba(255,107,53,0.06); border: 1px solid rgba(255,107,53,0.2); }
+  .layer-bridge::before { background: var(--accent2); }
+  .layer-exec  { background: rgba(127,255,0,0.06); border: 1px solid rgba(127,255,0,0.2); }
+  .layer-exec::before { background: var(--accent3); }
+  .layer-ai    { background: rgba(255,204,0,0.06); border: 1px solid rgba(255,204,0,0.2); }
+  .layer-ai::before { background: var(--warn); }
+  .layer-mem   { background: rgba(180,100,255,0.06); border: 1px solid rgba(180,100,255,0.2); }
+  .layer-mem::before { background: #b464ff; }
+  .layer-label { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--text2); min-width: 80px; }
+  .layer-name  { font-weight: 700; font-size: 14px; }
+  .layer-parts { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .layer-status{ margin-left: auto; }
+
+  /* PROVIDER CARDS */
+  .provider-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .provider-card {
+    border-radius: 4px; padding: 14px;
+    border: 1px solid var(--border);
+    position: relative;
+  }
+  .provider-card.default-provider { border-color: rgba(0,212,255,0.4); }
+  .provider-card.default-provider::after {
+    content: 'DEFAULT';
+    position: absolute; top: 8px; right: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px; color: var(--accent);
+    background: rgba(0,212,255,0.1); padding: 2px 6px; border-radius: 2px;
+  }
+  .provider-logo { font-size: 24px; margin-bottom: 6px; }
+  .provider-name { font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .provider-details { font-size: 11px; color: var(--text2); line-height: 1.7; }
+  .provider-details code {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--accent3); font-size: 10px;
+    background: rgba(127,255,0,0.08); padding: 1px 4px; border-radius: 2px;
+  }
+
+  /* COMPONENT TABLE */
+  .comp-table { width: 100%; border-collapse: collapse; }
+  .comp-table th {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--text2); text-align: left; padding: 6px 10px;
+    border-bottom: 1px solid var(--border2); background: var(--bg3);
+  }
+  .comp-table td {
+    padding: 8px 10px; border-bottom: 1px solid var(--border);
+    font-size: 12px; vertical-align: top;
+  }
+  .comp-table tr:last-child td { border-bottom: none; }
+  .comp-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .comp-table code {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; color: var(--accent3);
+    background: rgba(127,255,0,0.08); padding: 1px 4px; border-radius: 2px;
+  }
+  .priority { font-family: 'Share Tech Mono', monospace; font-size: 10px; padding: 2px 6px; border-radius: 2px; }
+  .p1 { background: rgba(255,51,85,0.15); color: var(--danger); }
+  .p2 { background: rgba(255,204,0,0.15); color: var(--warn); }
+  .p3 { background: rgba(0,212,255,0.15); color: var(--accent); }
+
+  /* CODE BLOCK */
+  .code-block {
+    background: #040608; border: 1px solid var(--border2);
+    border-radius: 4px; padding: 14px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; line-height: 1.8;
+    color: #b0c8e0; overflow-x: auto;
+    margin: 8px 0;
+  }
+  .code-block .cmt { color: #3a5a7a; }
+  .code-block .kw  { color: #ff6b35; }
+  .code-block .str { color: #7fff00; }
+  .code-block .fn  { color: #00d4ff; }
+  .code-block .num { color: #ffcc00; }
+  .code-block .var { color: #c8d8e8; }
+
+  /* FLOW DIAGRAM */
+  .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; }
+  .flow-node {
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: 4px; padding: 8px 12px;
+    font-size: 12px; font-weight: 600; text-align: center;
+    min-width: 90px;
+  }
+  .flow-arrow { color: var(--text2); padding: 0 6px; font-size: 16px; }
+  .fn-accent { border-color: rgba(0,212,255,0.4); color: var(--accent); }
+  .fn-orange { border-color: rgba(255,107,53,0.4); color: var(--accent2); }
+  .fn-green  { border-color: rgba(127,255,0,0.4); color: var(--accent3); }
+  .fn-yellow { border-color: rgba(255,204,0,0.4); color: var(--warn); }
+  .fn-purple { border-color: rgba(180,100,255,0.4); color: #b464ff; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* PULSE ANIMATION */
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+  .pulse { animation: pulse 2s infinite; }
+
+  /* GRID DIVIDER */
+  .divider { height: 1px; background: var(--border); margin: 16px 0; }
+  .section-title {
+    font-family: 'Share Tech Mono', monospace; font-size: 10px;
+    letter-spacing: 2px; color: var(--text2); text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  /* ACCORDION */
+  .acc-item { border: 1px solid var(--border); border-radius: 4px; margin-bottom: 6px; }
+  .acc-hdr {
+    padding: 10px 14px; cursor: pointer; display: flex; align-items: center;
+    gap: 10px; font-weight: 600;
+    transition: background 0.2s;
+  }
+  .acc-hdr:hover { background: rgba(255,255,255,0.03); }
+  .acc-hdr .arrow { margin-left: auto; color: var(--text2); transition: transform 0.2s; }
+  .acc-hdr.open .arrow { transform: rotate(90deg); }
+  .acc-body { display: none; padding: 12px 14px; border-top: 1px solid var(--border); }
+  .acc-body.open { display: block; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">PIXEL<span>CLAW</span></div>
+  <div class="header-sub">
+    VISUAL AGENT PLATFORM · ARCHITECTURE & GAP ANALYSIS<br>
+    ZeroClaw + PixelAgents + LM Studio · RTX 3090 Ti Local-First
+  </div>
+  <div class="header-tags">
+    <span class="tag tag-ok">CORE: PARTIAL</span>
+    <span class="tag tag-warn">BRIDGE: MISSING</span>
+    <span class="tag tag-miss">INFRA: NOT BUILT</span>
+    <span class="tag tag-blue">v0.1 PLANNING</span>
+  </div>
+</div>
+
+<div class="nav-tabs">
+  <div class="tab active" onclick="showTab('architecture')">⬡ Architecture</div>
+  <div class="tab" onclick="showTab('gaps')">⚠ Gap Analysis</div>
+  <div class="tab" onclick="showTab('providers')">⚡ Providers</div>
+  <div class="tab" onclick="showTab('components')">📦 Components</div>
+  <div class="tab" onclick="showTab('integration')">🔗 Integration Code</div>
+  <div class="tab" onclick="showTab('repo')">📁 Repo Structure</div>
+  <div class="tab" onclick="showTab('roadmap')">🗺 Roadmap</div>
+</div>
+
+<div class="main">
+
+<!-- ==================== ARCHITECTURE TAB ==================== -->
+<div id="tab-architecture" class="tab-content active">
+  <div class="panel-grid">
+    <div class="panel span3">
+      <div class="panel-hdr"><span class="icon">⬡</span> PIXELCLAW — FULL SYSTEM LAYER DIAGRAM <span class="badge tag-blue">READ THIS FIRST</span></div>
+      <div class="panel-body">
+        <div class="layer-stack">
+          <div class="layer layer-ui">
+            <div>
+              <div class="layer-label">LAYER 1 · UI</div>
+              <div class="layer-name">PixelAgents — VS Code Webview</div>
+              <div class="layer-parts">Animated characters · Living office view · Chat panel · Task status display · JSONL animation trigger</div>
+            </div>
+            <div class="layer-status"><span class="tag tag-warn">PARTIAL — missing bridge wiring</span></div>
+          </div>
+          <div class="layer layer-bridge">
+            <div>
+              <div class="layer-label">LAYER 2 · BRIDGE</div>
+              <div class="layer-name">PixelClaw Gateway (NEW — must build)</div>
+              <div class="layer-parts">FastAPI service · Tool registry · Provider router · JSONL emitter · MCP host · Project config loader · Auth proxy</div>
+            </div>
+            <div class="layer-status"><span class="tag tag-miss">MISSING — build first</span></div>
+          </div>
+          <div class="layer layer-exec">
+            <div>
+              <div class="layer-label">LAYER 3 · EXECUTOR</div>
+              <div class="layer-name">ZeroClaw Runner (Rust)</div>
+              <div class="layer-parts">Subprocess tool wrapper · Task queue · Tool output capture · Structured JSON stdout · Cancellation tokens</div>
+            </div>
+            <div class="layer-status"><span class="tag tag-warn">EXISTS — needs wrapper + JSON output mode</span></div>
+          </div>
+          <div class="layer layer-ai">
+            <div>
+              <div class="layer-label">LAYER 4 · INFERENCE</div>
+              <div class="layer-name">Provider Abstraction</div>
+              <div class="layer-parts">LM Studio (default · localhost:1234) · Claude API (optional · claude.ai) · Claude Code (optional · VS Code) · OpenAI-compatible fallback</div>
+            </div>
+            <div class="layer-status"><span class="tag tag-miss">MISSING — no abstraction layer exists</span></div>
+          </div>
+          <div class="layer layer-mem">
+            <div>
+              <div class="layer-label">LAYER 5 · MEMORY</div>
+              <div class="layer-name">Persistence Stack</div>
+              <div class="layer-parts">SQLite-vec (vector memory) · Session DB (SQLite) · Per-project context store · JSONL activity log · Embeddings via local model</div>
+            </div>
+            <div class="layer-status"><span class="tag tag-miss">MISSING — no memory layer</span></div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <div class="section-title">End-to-End Request Flow</div>
+          <div class="flow" style="flex-wrap:wrap; gap: 6px;">
+            <div class="flow-node fn-accent">User Prompt<br><span style="font-size:10px;color:var(--text2)">VS Code Panel</span></div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node fn-orange">Gateway<br><span style="font-size:10px;color:var(--text2)">FastAPI</span></div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node fn-yellow">Provider Router<br><span style="font-size:10px;color:var(--text2)">LM Studio / Claude</span></div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node fn-orange">Tool Dispatch<br><span style="font-size:10px;color:var(--text2)">ZeroClaw / MCP</span></div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node fn-green">ZeroClaw<br><span style="font-size:10px;color:var(--text2)">Rust Executor</span></div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node fn-purple">Memory Write<br><span style="font-size:10px;color:var(--text2)">SQLite-vec</span></div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node fn-orange">JSONL Emit<br><span style="font-size:10px;color:var(--text2)">Animation Trigger</span></div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node fn-accent">Character Anim<br><span style="font-size:10px;color:var(--text2)">PixelAgents</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-grid panel-grid-2">
+    <div class="panel">
+      <div class="panel-hdr"><span class="icon">🟢</span> WHAT EXISTS TODAY</div>
+      <div class="panel-body">
+        <div class="status-row">
+          <div class="status-dot dot-ok"></div>
+          <div><div class="label">PixelAgents UI</div><div class="desc">VS Code webview with character animations, JSONL event system, office scene rendering. Clone + npm install + build works.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-ok"></div>
+          <div><div class="label">ZeroClaw Binary</div><div class="desc">Rust-based agentic runner with tool execution and task orchestration. Has config.toml provider switching.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-ok"></div>
+          <div><div class="label">LM Studio Local Server</div><div class="desc">OpenAI-compatible API on localhost:1234. Your 3090 Ti with 24GB VRAM can run Llama 3 70B Q4, Mistral 7B, Qwen 2.5 72B Q4.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-warn"></div>
+          <div><div class="label">ZeroClaw ↔ LM Studio Link</div><div class="desc">Config exists in theory (config.toml base_url). Not validated end-to-end with output capture.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="icon">🔴</span> WHAT'S COMPLETELY MISSING</div>
+      <div class="panel-body">
+        <div class="status-row">
+          <div class="status-dot dot-miss"></div>
+          <div><div class="label">PixelClaw Gateway (FastAPI)</div><div class="desc">Nothing connects PixelAgents UI to ZeroClaw. No bridge service exists. This is the #1 blocker.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-miss"></div>
+          <div><div class="label">Provider Abstraction</div><div class="desc">No unified config system to swap LM Studio → Claude → OpenAI per project without code changes.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-miss"></div>
+          <div><div class="label">Memory / Context Layer</div><div class="desc">No persistence between sessions. Agents forget everything. No SQLite-vec, no embeddings pipeline.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-miss"></div>
+          <div><div class="label">MCP Server Host</div><div class="desc">No Model Context Protocol host to give agents filesystem, browser, code execution tools in a standards-compliant way.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-miss"></div>
+          <div><div class="label">Per-Project Config</div><div class="desc">No way to load project-specific provider, tools, personas, or memory namespaces when opening a new VS Code workspace.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-miss"></div>
+          <div><div class="label">JSONL Emitter from ZeroClaw</div><div class="desc">ZeroClaw stdout isn't structured to trigger PixelAgents character animations. Requires structured event format.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== GAP ANALYSIS TAB ==================== -->
+<div id="tab-gaps" class="tab-content">
+  <div class="panel-grid">
+    <div class="panel span3">
+      <div class="panel-hdr"><span class="icon">⚠</span> COMPLETE GAP ANALYSIS — ALL MISSING COMPONENTS</div>
+      <div class="panel-body">
+        <table class="comp-table">
+          <thead>
+            <tr>
+              <th>Component</th>
+              <th>Gap</th>
+              <th>Impact</th>
+              <th>Fix</th>
+              <th>Priority</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>PixelClaw Gateway</strong></td>
+              <td>No bridge between PixelAgents UI and ZeroClaw</td>
+              <td>System is completely non-functional end-to-end</td>
+              <td>Build FastAPI service with WebSocket + REST endpoints</td>
+              <td><span class="priority p1">P1 BLOCKER</span></td>
+            </tr>
+            <tr>
+              <td><strong>Provider Router</strong></td>
+              <td>No unified multi-provider abstraction</td>
+              <td>Can't switch LM Studio ↔ Claude ↔ OpenAI without touching source</td>
+              <td>Python provider abstraction class with <code>config.yaml</code> per project</td>
+              <td><span class="priority p1">P1 BLOCKER</span></td>
+            </tr>
+            <tr>
+              <td><strong>ZeroClaw JSON Output Mode</strong></td>
+              <td>stdout is human-readable, not machine-parseable</td>
+              <td>Can't route ZeroClaw events to animation system</td>
+              <td>Add <code>--json-output</code> flag to ZeroClaw or wrap stdout parser</td>
+              <td><span class="priority p1">P1 BLOCKER</span></td>
+            </tr>
+            <tr>
+              <td><strong>JSONL Animation Emitter</strong></td>
+              <td>PixelAgents expects JSONL events; ZeroClaw produces none</td>
+              <td>Characters never animate from real agent activity</td>
+              <td>Gateway writes structured JSONL to PixelAgents watch folder</td>
+              <td><span class="priority p1">P1 BLOCKER</span></td>
+            </tr>
+            <tr>
+              <td><strong>Memory Layer (SQLite-vec)</strong></td>
+              <td>No session persistence; agents forget after restart</td>
+              <td>Useless for multi-session workflows</td>
+              <td>SQLite-vec DB with embedding pipeline via local model</td>
+              <td><span class="priority p2">P2 HIGH</span></td>
+            </tr>
+            <tr>
+              <td><strong>MCP Server Host</strong></td>
+              <td>No Model Context Protocol integration</td>
+              <td>Agents have no standard tool access (fs, browser, code)</td>
+              <td>Embed MCP host in Gateway; expose stdio-based MCP servers</td>
+              <td><span class="priority p2">P2 HIGH</span></td>
+            </tr>
+            <tr>
+              <td><strong>Per-Project Config</strong></td>
+              <td>No <code>.pixelclaw.yaml</code> workspace config</td>
+              <td>Can't load per-project providers, tools, personas, namespaces</td>
+              <td>Config schema + VS Code workspace detection on startup</td>
+              <td><span class="priority p2">P2 HIGH</span></td>
+            </tr>
+            <tr>
+              <td><strong>Claude API Integration</strong></td>
+              <td>No optional Claude provider path</td>
+              <td>Can't use Claude Sonnet/Opus for complex reasoning tasks</td>
+              <td>Provider router handles <code>provider: claude</code> in config</td>
+              <td><span class="priority p2">P2 HIGH</span></td>
+            </tr>
+            <tr>
+              <td><strong>Claude Code Integration</strong></td>
+              <td>No hook into Claude Code's extension API</td>
+              <td>Can't use Claude Code's codebase indexing + diff tools</td>
+              <td>VS Code API bridge to trigger Claude Code commands from PixelClaw</td>
+              <td><span class="priority p3">P3 NICE</span></td>
+            </tr>
+            <tr>
+              <td><strong>Docker Compose Stack</strong></td>
+              <td>No containerized development environment</td>
+              <td>Hard to onboard; no reproducible setup</td>
+              <td><code>docker/compose.yaml</code> for Gateway + SQLite + optional services</td>
+              <td><span class="priority p2">P2 HIGH</span></td>
+            </tr>
+            <tr>
+              <td><strong>Task Queue / History</strong></td>
+              <td>No queue for pending / completed agent tasks</td>
+              <td>No visibility into what agent did or is doing</td>
+              <td>SQLite task_log table + history panel in Gateway UI</td>
+              <td><span class="priority p2">P2 HIGH</span></td>
+            </tr>
+            <tr>
+              <td><strong>Health & Status Dashboard</strong></td>
+              <td>No status UI for LM Studio / ZeroClaw / Gateway</td>
+              <td>Can't diagnose when something is down</td>
+              <td>Gateway exposes <code>/health</code> + VS Code status bar indicator</td>
+              <td><span class="priority p2">P2 HIGH</span></td>
+            </tr>
+            <tr>
+              <td><strong>Smoke + Integration Tests</strong></td>
+              <td>No automated testing of any kind</td>
+              <td>Breaks silently; can't verify system health</td>
+              <td>pytest smoke tests for Gateway + ZeroClaw wrapper + provider ping</td>
+              <td><span class="priority p2">P2 HIGH</span></td>
+            </tr>
+            <tr>
+              <td><strong>Embedding Pipeline</strong></td>
+              <td>No local embedding model wired for memory</td>
+              <td>Vector memory can't store or retrieve semantic context</td>
+              <td>nomic-embed-text via LM Studio or sentence-transformers local</td>
+              <td><span class="priority p3">P3 NICE</span></td>
+            </tr>
+            <tr>
+              <td><strong>Multi-Agent Orchestration</strong></td>
+              <td>Single agent only; no agent-to-agent communication</td>
+              <td>Can't parallelize or specialize agent roles</td>
+              <td>Gateway agent registry + message bus between ZeroClaw instances</td>
+              <td><span class="priority p3">P3 NICE</span></td>
+            </tr>
+            <tr>
+              <td><strong>Tool Registry UI</strong></td>
+              <td>No UI to enable/disable/configure tools per project</td>
+              <td>Can't control agent capabilities without editing files</td>
+              <td>Webview panel listing available tools with toggle + config</td>
+              <td><span class="priority p3">P3 NICE</span></td>
+            </tr>
+            <tr>
+              <td><strong>CI / GitHub Actions</strong></td>
+              <td>No CI pipeline</td>
+              <td>No automated quality gates</td>
+              <td><code>.github/workflows/ci.yaml</code> with lint + test + build</td>
+              <td><span class="priority p2">P2 HIGH</span></td>
+            </tr>
+            <tr>
+              <td><strong>Doctor Script</strong></td>
+              <td>No prerequisites checker</td>
+              <td>Setup fails with cryptic errors</td>
+              <td><code>scripts/doctor.ps1</code> checking Node, Python, Rust, LM Studio, ports</td>
+              <td><span class="priority p2">P2 HIGH</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PROVIDERS TAB ==================== -->
+<div id="tab-providers" class="tab-content">
+  <div class="panel-grid">
+    <div class="panel span3">
+      <div class="panel-hdr"><span class="icon">⚡</span> PROVIDER ABSTRACTION LAYER — How Multi-Provider Works</div>
+      <div class="panel-body">
+        <div class="provider-grid">
+          <div class="provider-card default-provider">
+            <div class="provider-logo">🖥️</div>
+            <div class="provider-name" style="color:var(--accent)">LM Studio</div>
+            <div class="provider-details">
+              <strong>Type:</strong> Local / OpenAI-compatible<br>
+              <strong>Endpoint:</strong> <code>localhost:1234/v1</code><br>
+              <strong>Auth:</strong> <code>api_key: lm-studio</code> (dummy)<br>
+              <strong>Models (3090 Ti 24GB):</strong><br>
+              · Llama 3.3 70B Q4 (~20GB)<br>
+              · Qwen 2.5 72B Q4 (~20GB)<br>
+              · Mistral 7B Q8 (~8GB, fastest)<br>
+              · nomic-embed-text (embeddings)<br>
+              <strong>Cost:</strong> Free · 100% private · Offline<br>
+              <strong>Best for:</strong> All tasks by default
+            </div>
+          </div>
+          <div class="provider-card">
+            <div class="provider-logo">🤖</div>
+            <div class="provider-name" style="color:var(--accent2)">Claude API</div>
+            <div class="provider-details">
+              <strong>Type:</strong> Cloud / Anthropic API<br>
+              <strong>Endpoint:</strong> <code>api.anthropic.com</code><br>
+              <strong>Auth:</strong> <code>ANTHROPIC_API_KEY</code> in .env<br>
+              <strong>Models:</strong><br>
+              · claude-sonnet-4-6 (balanced)<br>
+              · claude-opus-4-6 (complex reasoning)<br>
+              · claude-haiku-4-5 (fast/cheap)<br>
+              <strong>Cost:</strong> Per-token pricing<br>
+              <strong>Best for:</strong> Complex multi-step reasoning, long context
+            </div>
+          </div>
+          <div class="provider-card">
+            <div class="provider-logo">💻</div>
+            <div class="provider-name" style="color:var(--accent3)">Claude Code</div>
+            <div class="provider-details">
+              <strong>Type:</strong> VS Code Extension<br>
+              <strong>Endpoint:</strong> Extension API / CLI subprocess<br>
+              <strong>Auth:</strong> Handled by Claude Code extension<br>
+              <strong>Integration:</strong><br>
+              · Trigger via VS Code commands API<br>
+              · Read Claude Code diffs + suggestions<br>
+              · PixelAgent character reacts to edits<br>
+              <strong>Best for:</strong> Code editing, refactoring, file ops within VS Code workspace
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <div class="section-title">Provider Config Schema — <code>.pixelclaw.yaml</code> (per project)</div>
+          <div class="code-block"><span class="cmt"># .pixelclaw.yaml — place in workspace root</span>
+<span class="kw">project</span><span class="var">:</span>
+  <span class="kw">name</span><span class="var">:</span> <span class="str">"my-project"</span>
+  <span class="kw">namespace</span><span class="var">:</span> <span class="str">"my-project-v1"</span>  <span class="cmt"># memory namespace</span>
+
+<span class="kw">provider</span><span class="var">:</span>
+  <span class="kw">default</span><span class="var">:</span> <span class="str">"lmstudio"</span>       <span class="cmt"># lmstudio | claude | openai</span>
+  <span class="kw">lmstudio</span><span class="var">:</span>
+    <span class="kw">base_url</span><span class="var">:</span> <span class="str">"http://localhost:1234/v1"</span>
+    <span class="kw">model</span><span class="var">:</span>    <span class="str">"llama-3.3-70b-instruct"</span>
+    <span class="kw">embed_model</span><span class="var">:</span> <span class="str">"nomic-embed-text"</span>
+  <span class="kw">claude</span><span class="var">:</span>
+    <span class="kw">model</span><span class="var">:</span>    <span class="str">"claude-sonnet-4-6"</span>
+    <span class="kw">api_key_env</span><span class="var">:</span> <span class="str">"ANTHROPIC_API_KEY"</span>  <span class="cmt"># from .env</span>
+  <span class="kw">override_provider</span><span class="var">:</span> <span class="str">null</span>   <span class="cmt"># force provider for this project</span>
+
+<span class="kw">tools</span><span class="var">:</span>
+  <span class="kw">zeroclaw</span><span class="var">:</span> <span class="num">true</span>
+  <span class="kw">filesystem</span><span class="var">:</span> <span class="num">true</span>
+  <span class="kw">browser</span><span class="var">:</span> <span class="num">false</span>
+  <span class="kw">mcp_servers</span><span class="var">:</span>
+    <span class="var">-</span> <span class="str">"filesystem"</span>
+    <span class="var">-</span> <span class="str">"git"</span>
+
+<span class="kw">memory</span><span class="var">:</span>
+  <span class="kw">enabled</span><span class="var">:</span> <span class="num">true</span>
+  <span class="kw">max_tokens</span><span class="var">:</span> <span class="num">4096</span>
+  <span class="kw">ttl_days</span><span class="var">:</span> <span class="num">30</span>
+
+<span class="kw">persona</span><span class="var">:</span>
+  <span class="kw">name</span><span class="var">:</span>   <span class="str">"Dev Assistant"</span>
+  <span class="kw">avatar</span><span class="var">:</span> <span class="str">"pixel_coder"</span>   <span class="cmt"># PixelAgents character</span></div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <div class="section-title">Provider Router Python Class (Gateway Core)</div>
+          <div class="code-block"><span class="cmt"># gateway/providers/router.py</span>
+<span class="kw">from</span> <span class="var">openai</span> <span class="kw">import</span> <span class="fn">AsyncOpenAI</span>
+<span class="kw">import</span> <span class="var">anthropic</span>, <span class="var">yaml</span>, <span class="var">os</span>
+
+<span class="kw">class</span> <span class="fn">ProviderRouter</span><span class="var">:</span>
+    <span class="kw">def</span> <span class="fn">__init__</span><span class="var">(self, config_path: str):</span>
+        <span class="kw">with</span> <span class="fn">open</span><span class="var">(config_path) as f:</span>
+            <span class="var">self.cfg</span> <span class="var">=</span> <span class="var">yaml.</span><span class="fn">safe_load</span><span class="var">(f)</span>
+        <span class="var">self.provider</span> <span class="var">=</span> <span class="var">self.cfg[</span><span class="str">"provider"</span><span class="var">][</span><span class="str">"default"</span><span class="var">]</span>
+
+    <span class="kw">def</span> <span class="fn">get_client</span><span class="var">(self) -> AsyncOpenAI | anthropic.AsyncAnthropic:</span>
+        <span class="kw">if</span> <span class="var">self.provider</span> <span class="var">==</span> <span class="str">"lmstudio"</span><span class="var">:</span>
+            <span class="var">cfg</span> <span class="var">= self.cfg[</span><span class="str">"provider"</span><span class="var">][</span><span class="str">"lmstudio"</span><span class="var">]</span>
+            <span class="kw">return</span> <span class="fn">AsyncOpenAI</span><span class="var">(</span>
+                <span class="kw">base_url</span><span class="var">=cfg[</span><span class="str">"base_url"</span><span class="var">],</span>
+                <span class="kw">api_key</span><span class="var">=</span><span class="str">"lm-studio"</span>
+            <span class="var">)</span>
+        <span class="kw">elif</span> <span class="var">self.provider</span> <span class="var">==</span> <span class="str">"claude"</span><span class="var">:</span>
+            <span class="var">key_env</span> <span class="var">= self.cfg[</span><span class="str">"provider"</span><span class="var">][</span><span class="str">"claude"</span><span class="var">][</span><span class="str">"api_key_env"</span><span class="var">]</span>
+            <span class="kw">return</span> <span class="var">anthropic.</span><span class="fn">AsyncAnthropic</span><span class="var">(api_key=os.environ[key_env])</span>
+        <span class="kw">raise</span> <span class="fn">ValueError</span><span class="var">(f</span><span class="str">"Unknown provider: {self.provider}"</span><span class="var">)</span>
+
+    <span class="kw">def</span> <span class="fn">get_model</span><span class="var">(self) -> str:</span>
+        <span class="kw">return</span> <span class="var">self.cfg[</span><span class="str">"provider"</span><span class="var">][self.provider][</span><span class="str">"model"</span><span class="var">]</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== COMPONENTS TAB ==================== -->
+<div id="tab-components" class="tab-content">
+  <div class="panel-grid panel-grid-2">
+    <div class="panel">
+      <div class="panel-hdr"><span class="icon">📦</span> ALL PROJECTS NEEDED — COMPLETE LIST</div>
+      <div class="panel-body">
+        <div class="acc-item">
+          <div class="acc-hdr" onclick="toggleAcc(this)">
+            <span class="tag tag-miss">MUST BUILD</span> PixelClaw Gateway (FastAPI)
+            <span class="arrow">▶</span>
+          </div>
+          <div class="acc-body">
+            <strong>What it does:</strong> The central nervous system of PixelClaw. Bridges all layers.<br><br>
+            <strong>Responsibilities:</strong><br>
+            · REST + WebSocket API for VS Code extension communication<br>
+            · Provider routing (LM Studio / Claude / OpenAI)<br>
+            · Tool dispatch (ZeroClaw subprocess + MCP servers)<br>
+            · JSONL event emitter → PixelAgents animation folder<br>
+            · Task queue + history in SQLite<br>
+            · Health endpoint for VS Code status bar<br><br>
+            <strong>Stack:</strong> Python 3.11 + FastAPI + Uvicorn + SQLite + asyncio<br>
+            <strong>Port:</strong> 7892 (default, configurable)
+          </div>
+        </div>
+        <div class="acc-item">
+          <div class="acc-hdr" onclick="toggleAcc(this)">
+            <span class="tag tag-miss">MUST BUILD</span> ZeroClaw Tool Wrapper
+            <span class="arrow">▶</span>
+          </div>
+          <div class="acc-body">
+            <strong>What it does:</strong> Wraps ZeroClaw binary as a Gateway tool.<br><br>
+            <strong>Key additions:</strong><br>
+            · asyncio subprocess with stdout/stderr streaming<br>
+            · Structured JSON event emission on task milestones<br>
+            · Timeout + cancellation support<br>
+            · ZeroClaw config.toml injection per project (provider, model)<br><br>
+            <strong>Location:</strong> <code>gateway/tools/zeroclaw_tool.py</code>
+          </div>
+        </div>
+        <div class="acc-item">
+          <div class="acc-hdr" onclick="toggleAcc(this)">
+            <span class="tag tag-miss">MUST BUILD</span> Memory Layer (SQLite-vec)
+            <span class="arrow">▶</span>
+          </div>
+          <div class="acc-body">
+            <strong>What it does:</strong> Per-project persistent agent memory.<br><br>
+            <strong>Schema:</strong><br>
+            · <code>sessions</code> — conversation threads per project<br>
+            · <code>memories</code> — vector-indexed facts and context<br>
+            · <code>task_log</code> — what the agent did and when<br><br>
+            <strong>Embedding:</strong> nomic-embed-text via LM Studio (free, local)<br>
+            <strong>Retrieval:</strong> SQLite-vec cosine similarity search before each request<br>
+            <strong>Stack:</strong> sqlite-vec Python extension + sqlalchemy
+          </div>
+        </div>
+        <div class="acc-item">
+          <div class="acc-hdr" onclick="toggleAcc(this)">
+            <span class="tag tag-miss">MUST BUILD</span> MCP Server Host
+            <span class="arrow">▶</span>
+          </div>
+          <div class="acc-body">
+            <strong>What it does:</strong> Hosts MCP servers that give agents standardized tool access.<br><br>
+            <strong>MCP servers to include:</strong><br>
+            · <code>@modelcontextprotocol/server-filesystem</code> — file read/write<br>
+            · <code>@modelcontextprotocol/server-git</code> — git operations<br>
+            · <code>@modelcontextprotocol/server-fetch</code> — web fetching<br>
+            · Custom ZeroClaw MCP server (wraps binary as MCP tools)<br><br>
+            <strong>Stack:</strong> Node.js MCP SDK (stdio transport, managed by Gateway)
+          </div>
+        </div>
+        <div class="acc-item">
+          <div class="acc-hdr" onclick="toggleAcc(this)">
+            <span class="tag tag-warn">EXTEND</span> PixelAgents VS Code Extension
+            <span class="arrow">▶</span>
+          </div>
+          <div class="acc-body">
+            <strong>What to add:</strong><br>
+            · Gateway connection panel (host, port, status indicator in status bar)<br>
+            · Per-project config detection (<code>.pixelclaw.yaml</code> on workspace open)<br>
+            · Provider selector dropdown in UI<br>
+            · Task history panel (pull from Gateway SQLite via API)<br>
+            · Claude Code command bridge (trigger Claude Code actions from PixelAgent chat)<br>
+            · Webview tool registry panel (toggle tools on/off)
+          </div>
+        </div>
+        <div class="acc-item">
+          <div class="acc-hdr" onclick="toggleAcc(this)">
+            <span class="tag tag-blue">OPTIONAL</span> Claude Desktop Integration
+            <span class="arrow">▶</span>
+          </div>
+          <div class="acc-body">
+            <strong>How it works:</strong> Claude Desktop supports MCP servers natively.<br><br>
+            · Add PixelClaw Gateway as an MCP server in Claude Desktop config<br>
+            · This exposes all PixelClaw tools (ZeroClaw, filesystem, etc.) inside Claude Desktop<br>
+            · Users can talk to Claude Desktop and it will use PixelClaw's tools automatically<br><br>
+            <strong>Config location:</strong> <code>%APPDATA%\Claude\claude_desktop_config.json</code><br>
+            <strong>Zero extra code needed</strong> — just Gateway MCP endpoint registration.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="icon">🛠</span> SUPPORTING INFRASTRUCTURE</div>
+      <div class="panel-body">
+        <div class="acc-item">
+          <div class="acc-hdr" onclick="toggleAcc(this)">
+            <span class="tag tag-miss">MUST BUILD</span> Docker Compose Stack
+            <span class="arrow">▶</span>
+          </div>
+          <div class="acc-body">
+            <div class="code-block"><span class="cmt"># docker/compose.yaml</span>
+<span class="kw">services</span><span class="var">:</span>
+  <span class="kw">gateway</span><span class="var">:</span>
+    <span class="kw">build</span><span class="var">:</span> <span class="str">./gateway</span>
+    <span class="kw">ports</span><span class="var">:</span> [<span class="str">"7892:7892"</span>]
+    <span class="kw">volumes</span><span class="var">:</span>
+      <span class="var">-</span> <span class="str">../data:/data</span>          <span class="cmt"># SQLite DBs</span>
+      <span class="var">-</span> <span class="str">../projects:/projects</span>  <span class="cmt"># watched workspaces</span>
+      <span class="var">-</span> <span class="str">../.env:/.env</span>
+    <span class="kw">environment</span><span class="var">:</span>
+      <span class="var">-</span> <span class="str">LM_STUDIO_URL=http://host.docker.internal:1234/v1</span>
+    <span class="kw">extra_hosts</span><span class="var">:</span>
+      <span class="var">-</span> <span class="str">"host.docker.internal:host-gateway"</span></div>
+            LM Studio runs on host GPU — Gateway reaches it via <code>host.docker.internal</code>.
+          </div>
+        </div>
+        <div class="acc-item">
+          <div class="acc-hdr" onclick="toggleAcc(this)">
+            <span class="tag tag-miss">MUST BUILD</span> Doctor Script (scripts/doctor.ps1)
+            <span class="arrow">▶</span>
+          </div>
+          <div class="acc-body">
+            Checks: Node ≥18, Python ≥3.11, Rust/Cargo, ZeroClaw binary in PATH, LM Studio responding on port 1234, Gateway port 7892 free, .env exists, ANTHROPIC_API_KEY set (if Claude enabled).
+          </div>
+        </div>
+        <div class="acc-item">
+          <div class="acc-hdr" onclick="toggleAcc(this)">
+            <span class="tag tag-miss">MUST BUILD</span> Test Suite (pytest)
+            <span class="arrow">▶</span>
+          </div>
+          <div class="acc-body">
+            <strong>Smoke:</strong> Gateway boots → /health returns 200<br>
+            <strong>Provider:</strong> LM Studio ping → model list returned<br>
+            <strong>ZeroClaw:</strong> zeroclaw --version runs → exit 0<br>
+            <strong>Integration:</strong> Full round-trip: chat → provider → tool → JSONL emitted<br>
+            <strong>Memory:</strong> Write + retrieve from SQLite-vec
+          </div>
+        </div>
+        <div class="acc-item">
+          <div class="acc-hdr" onclick="toggleAcc(this)">
+            <span class="tag tag-blue">RECOMMENDED</span> LM Studio Model Guide (3090 Ti)
+            <span class="arrow">▶</span>
+          </div>
+          <div class="acc-body">
+            <table class="comp-table">
+              <tr><th>Model</th><th>VRAM</th><th>Speed</th><th>Best For</th></tr>
+              <tr><td>Llama 3.3 70B Q4_K_M</td><td>~20GB</td><td>15-20 t/s</td><td>Complex reasoning</td></tr>
+              <tr><td>Qwen 2.5 72B Q4_K_M</td><td>~20GB</td><td>15 t/s</td><td>Coding tasks</td></tr>
+              <tr><td>Mistral 7B Q8</td><td>~8GB</td><td>60+ t/s</td><td>Fast tool calls</td></tr>
+              <tr><td>nomic-embed-text</td><td>~0.3GB</td><td>instant</td><td>Embeddings (memory)</td></tr>
+              <tr><td>Qwen 2.5 Coder 32B Q5</td><td>~22GB</td><td>20 t/s</td><td>Code generation</td></tr>
+            </table>
+            Tip: Load Mistral 7B as always-on tool-use model. Swap to 70B only for planning tasks.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== INTEGRATION CODE TAB ==================== -->
+<div id="tab-integration" class="tab-content">
+  <div class="panel-grid panel-grid-2">
+    <div class="panel">
+      <div class="panel-hdr"><span class="icon">🔗</span> GATEWAY — Core FastAPI App</div>
+      <div class="panel-body">
+        <div class="code-block"><span class="cmt"># gateway/main.py</span>
+<span class="kw">from</span> <span class="var">fastapi</span> <span class="kw">import</span> <span class="fn">FastAPI, WebSocket</span>
+<span class="kw">from</span> <span class="var">fastapi.middleware.cors</span> <span class="kw">import</span> <span class="fn">CORSMiddleware</span>
+<span class="kw">from</span> <span class="var">.providers.router</span> <span class="kw">import</span> <span class="fn">ProviderRouter</span>
+<span class="kw">from</span> <span class="var">.tools.zeroclaw_tool</span> <span class="kw">import</span> <span class="fn">ZeroClawTool</span>
+<span class="kw">from</span> <span class="var">.memory.store</span> <span class="kw">import</span> <span class="fn">MemoryStore</span>
+<span class="kw">from</span> <span class="var">.jsonl_emitter</span> <span class="kw">import</span> <span class="fn">JSONLEmitter</span>
+<span class="kw">import</span> <span class="var">asyncio</span>, <span class="var">json</span>, <span class="var">yaml</span>
+
+<span class="var">app</span> <span class="var">=</span> <span class="fn">FastAPI</span><span class="var">(title=</span><span class="str">"PixelClaw Gateway"</span><span class="var">)</span>
+<span class="var">app.</span><span class="fn">add_middleware</span><span class="var">(CORSMiddleware, allow_origins=[</span><span class="str">"*"</span><span class="var">])</span>
+
+<span class="var">router</span>  <span class="var">= ProviderRouter(</span><span class="str">".pixelclaw.yaml"</span><span class="var">)</span>
+<span class="var">zclaw</span>   <span class="var">= ZeroClawTool()</span>
+<span class="var">memory</span>  <span class="var">= MemoryStore(</span><span class="str">"data/memory.db"</span><span class="var">)</span>
+<span class="var">emitter</span> <span class="var">= JSONLEmitter(</span><span class="str">"pixelagents/events/"</span><span class="var">)</span>
+
+<span class="var">@app.get(</span><span class="str">"/health"</span><span class="var">)</span>
+<span class="kw">async def</span> <span class="fn">health</span><span class="var">():</span>
+    <span class="kw">return</span> <span class="var">{</span><span class="str">"status"</span><span class="var">:</span><span class="str">"ok"</span><span class="var">,</span><span class="str">"provider"</span><span class="var">:router.provider}</span>
+
+<span class="var">@app.websocket(</span><span class="str">"/ws/chat"</span><span class="var">)</span>
+<span class="kw">async def</span> <span class="fn">chat_ws</span><span class="var">(ws: WebSocket):</span>
+    <span class="kw">await</span> <span class="var">ws.</span><span class="fn">accept</span><span class="var">()</span>
+    <span class="kw">while</span> <span class="num">True</span><span class="var">:</span>
+        <span class="var">msg</span> <span class="var">=</span> <span class="kw">await</span> <span class="var">ws.</span><span class="fn">receive_json</span><span class="var">()</span>
+        <span class="var">ctx</span> <span class="var">=</span> <span class="kw">await</span> <span class="var">memory.</span><span class="fn">retrieve</span><span class="var">(msg[</span><span class="str">"text"</span><span class="var">])</span>
+        <span class="kw">await</span> <span class="var">emitter.</span><span class="fn">emit</span><span class="var">(</span><span class="str">"thinking"</span><span class="var">, msg[</span><span class="str">"text"</span><span class="var">])</span>
+        <span class="kw">async for</span> <span class="var">chunk</span> <span class="kw">in</span> <span class="var">router.</span><span class="fn">stream</span><span class="var">(msg, ctx):</span>
+            <span class="kw">await</span> <span class="var">ws.</span><span class="fn">send_json</span><span class="var">({</span><span class="str">"delta"</span><span class="var">: chunk})</span>
+        <span class="kw">await</span> <span class="var">memory.</span><span class="fn">store</span><span class="var">(msg[</span><span class="str">"text"</span><span class="var">])</span>
+        <span class="kw">await</span> <span class="var">emitter.</span><span class="fn">emit</span><span class="var">(</span><span class="str">"idle"</span><span class="var">, </span><span class="str">""</span><span class="var">)</span></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="icon">⚙</span> ZEROCLAW TOOL WRAPPER — Subprocess with JSONL</div>
+      <div class="panel-body">
+        <div class="code-block"><span class="cmt"># gateway/tools/zeroclaw_tool.py</span>
+<span class="kw">import</span> <span class="var">asyncio, json, subprocess</span>
+<span class="kw">from</span> <span class="var">pathlib</span> <span class="kw">import</span> <span class="fn">Path</span>
+
+<span class="kw">class</span> <span class="fn">ZeroClawTool</span><span class="var">:</span>
+    <span class="kw">def</span> <span class="fn">__init__</span><span class="var">(self, binary=</span><span class="str">"zeroclaw"</span><span class="var">):</span>
+        <span class="var">self.binary</span> <span class="var">= binary</span>
+
+    <span class="kw">async def</span> <span class="fn">run</span><span class="var">(</span>
+        <span class="var">self, task: str, project_dir: str,</span>
+        <span class="var">timeout: float = </span><span class="num">120.0</span>
+    <span class="var">) -> dict:</span>
+        <span class="var">proc</span> <span class="var">=</span> <span class="kw">await</span> <span class="var">asyncio.</span><span class="fn">create_subprocess_exec</span><span class="var">(</span>
+            <span class="var">self.binary,</span> <span class="str">"agent"</span><span class="var">,</span> <span class="str">"-m"</span><span class="var">, task,</span>
+            <span class="str">"--json-output"</span><span class="var">,</span>  <span class="cmt"># structured stdout</span>
+            <span class="var">cwd=project_dir,</span>
+            <span class="var">stdout=asyncio.subprocess.PIPE,</span>
+            <span class="var">stderr=asyncio.subprocess.PIPE</span>
+        <span class="var">)</span>
+        <span class="kw">try</span><span class="var">:</span>
+            <span class="var">out, err</span> <span class="var">=</span> <span class="kw">await</span> <span class="var">asyncio.</span><span class="fn">wait_for</span><span class="var">(</span>
+                <span class="var">proc.</span><span class="fn">communicate</span><span class="var">(), timeout=timeout</span>
+            <span class="var">)</span>
+        <span class="kw">except</span> <span class="fn">asyncio.TimeoutError</span><span class="var">:</span>
+            <span class="var">proc.</span><span class="fn">kill</span><span class="var">()</span>
+            <span class="kw">return</span> <span class="var">{</span><span class="str">"error"</span><span class="var">:</span><span class="str">"timeout"</span><span class="var">,</span><span class="str">"task"</span><span class="var">:task}</span>
+        <span class="kw">try</span><span class="var">:</span>
+            <span class="kw">return</span> <span class="var">json.</span><span class="fn">loads</span><span class="var">(out)</span>
+        <span class="kw">except</span> <span class="var">json.JSONDecodeError:</span>
+            <span class="cmt"># fallback: wrap raw stdout</span>
+            <span class="kw">return</span> <span class="var">{</span><span class="str">"result"</span><span class="var">: out.</span><span class="fn">decode</span><span class="var">(),</span><span class="str">"raw"</span><span class="var">:</span><span class="num">True</span><span class="var">}</span></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="icon">🎬</span> JSONL EMITTER — Trigger PixelAgents Animations</div>
+      <div class="panel-body">
+        <div class="code-block"><span class="cmt"># gateway/jsonl_emitter.py</span>
+<span class="cmt"># PixelAgents watches a folder for .jsonl events</span>
+<span class="cmt"># Each line = one agent activity event</span>
+<span class="kw">import</span> <span class="var">json, aiofiles</span>
+<span class="kw">from</span> <span class="var">datetime</span> <span class="kw">import</span> <span class="fn">datetime, timezone</span>
+<span class="kw">from</span> <span class="var">pathlib</span> <span class="kw">import</span> <span class="fn">Path</span>
+
+<span class="cmt"># PixelAgents event types:</span>
+<span class="cmt"># thinking | working | typing | reading | idle | done | error</span>
+<span class="var">ANIM_MAP</span> <span class="var">= {</span>
+    <span class="str">"thinking"</span><span class="var">: </span><span class="str">"walk_to_desk"</span><span class="var">,</span>
+    <span class="str">"working"</span><span class="var">:  </span><span class="str">"typing"</span><span class="var">,</span>
+    <span class="str">"reading"</span><span class="var">:  </span><span class="str">"look_at_screen"</span><span class="var">,</span>
+    <span class="str">"done"</span><span class="var">:     </span><span class="str">"stretch"</span><span class="var">,</span>
+    <span class="str">"idle"</span><span class="var">:     </span><span class="str">"idle_loop"</span><span class="var">,</span>
+    <span class="str">"error"</span><span class="var">:    </span><span class="str">"confused"</span><span class="var">,</span>
+<span class="var">}</span>
+
+<span class="kw">class</span> <span class="fn">JSONLEmitter</span><span class="var">:</span>
+    <span class="kw">def</span> <span class="fn">__init__</span><span class="var">(self, watch_dir: str):</span>
+        <span class="var">self.path</span> <span class="var">= Path(watch_dir) /</span> <span class="str">"events.jsonl"</span>
+        <span class="var">self.path.parent.</span><span class="fn">mkdir</span><span class="var">(parents=</span><span class="num">True</span><span class="var">, exist_ok=</span><span class="num">True</span><span class="var">)</span>
+
+    <span class="kw">async def</span> <span class="fn">emit</span><span class="var">(self, event_type: str, text: str):</span>
+        <span class="var">event</span> <span class="var">= {</span>
+            <span class="str">"ts"</span><span class="var">:    datetime.now(timezone.utc).</span><span class="fn">isoformat</span><span class="var">(),</span>
+            <span class="str">"type"</span><span class="var">:  event_type,</span>
+            <span class="str">"anim"</span><span class="var">:  ANIM_MAP.</span><span class="fn">get</span><span class="var">(event_type,</span><span class="str">"idle"</span><span class="var">),</span>
+            <span class="str">"text"</span><span class="var">:  text[:</span><span class="num">200</span><span class="var">],   </span><span class="cmt"># truncate for display</span>
+        <span class="var">}</span>
+        <span class="kw">async with</span> <span class="var">aiofiles.</span><span class="fn">open</span><span class="var">(self.path,</span><span class="str">"a"</span><span class="var">) as f:</span>
+            <span class="kw">await</span> <span class="var">f.</span><span class="fn">write</span><span class="var">(json.</span><span class="fn">dumps</span><span class="var">(event) +</span><span class="str">"\n"</span><span class="var">)</span></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="icon">🔌</span> CLAUDE DESKTOP — Register PixelClaw as MCP Server</div>
+      <div class="panel-body">
+        <div class="code-block"><span class="cmt">// %APPDATA%\Claude\claude_desktop_config.json</span>
+<span class="var">{</span>
+  <span class="str">"mcpServers"</span><span class="var">: {</span>
+    <span class="str">"pixelclaw"</span><span class="var">: {</span>
+      <span class="str">"url"</span><span class="var">: </span><span class="str">"http://localhost:7892/mcp"</span><span class="var">,</span>
+      <span class="str">"type"</span><span class="var">: </span><span class="str">"http"</span>
+    <span class="var">},</span>
+    <span class="str">"filesystem"</span><span class="var">: {</span>
+      <span class="str">"command"</span><span class="var">: </span><span class="str">"npx"</span><span class="var">,</span>
+      <span class="str">"args"</span><span class="var">: [</span><span class="str">"-y"</span><span class="var">,</span><span class="str">"@modelcontextprotocol/server-filesystem"</span><span class="var">,</span><span class="str">"C:\\Projects"</span><span class="var">]</span>
+    <span class="var">}</span>
+  <span class="var">}</span>
+<span class="var">}</span></div>
+        <div style="margin-top:10px;color:var(--text2);font-size:12px;">
+          Once Gateway exposes <code>/mcp</code> endpoint, Claude Desktop gets full access to ZeroClaw tasks, filesystem tools, and PixelClaw memory — without any extra code. Claude Code integration uses the same MCP path but via VS Code extension settings.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== REPO STRUCTURE TAB ==================== -->
+<div id="tab-repo" class="tab-content">
+  <div class="panel-grid">
+    <div class="panel span3">
+      <div class="panel-hdr"><span class="icon">📁</span> PIXELCLAW — TARGET REPO STRUCTURE</div>
+      <div class="panel-body">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+          <div>
+            <div class="section-title">REPO ROOT</div>
+            <div class="code-block" style="font-size:10px;line-height:1.9;">
+pixelclaw/
+├── <span class="fn">gateway/</span>           <span class="cmt"># Python FastAPI</span>
+│   ├── main.py
+│   ├── providers/
+│   │   └── router.py
+│   ├── tools/
+│   │   ├── zeroclaw_tool.py
+│   │   └── mcp_host.py
+│   ├── memory/
+│   │   └── store.py
+│   ├── jsonl_emitter.py
+│   └── requirements.txt
+├── <span class="fn">extension/</span>         <span class="cmt"># PixelAgents fork</span>
+│   ├── src/
+│   ├── webview-ui/
+│   └── package.json
+├── <span class="fn">zeroclaw/</span>          <span class="cmt"># ZeroClaw submodule/binary</span>
+│   └── config.toml.tmpl
+├── <span class="fn">mcp-servers/</span>       <span class="cmt"># MCP server configs</span>
+│   └── servers.json
+├── <span class="fn">tests/</span>
+│   ├── smoke/
+│   ├── integration/
+│   └── fixtures/
+├── <span class="fn">scripts/</span>
+│   ├── doctor.ps1
+│   ├── run-dev.ps1
+│   ├── test.ps1
+│   ├── build.ps1
+│   └── format.ps1
+├── <span class="fn">docker/</span>
+│   ├── compose.yaml
+│   └── gateway.Dockerfile
+├── <span class="fn">data/</span>              <span class="cmt"># gitignored runtime</span>
+│   ├── memory.db
+│   └── events/
+├── <span class="fn">docs/</span>
+├── <span class="fn">.github/workflows/</span>
+│   └── ci.yaml
+├── env/.env.example
+├── README.md
+├── ARCHITECTURE.md
+├── CHANGELOG.md
+└── SECURITY.md
+            </div>
+          </div>
+          <div>
+            <div class="section-title">PER-PROJECT (.pixelclaw.yaml)</div>
+            <div class="code-block" style="font-size:10px;line-height:1.9;">
+<span class="cmt"># Drop this in any project root</span>
+<span class="cmt"># Gateway auto-detects on workspace open</span>
+
+my-project/
+├── .pixelclaw.yaml     <span class="cmt"># ← per-project config</span>
+├── src/
+├── tests/
+└── ...
+
+<span class="cmt"># Workspace detection:</span>
+<span class="cmt"># Extension sends workspace path to Gateway</span>
+<span class="cmt"># Gateway loads .pixelclaw.yaml if exists</span>
+<span class="cmt"># Falls back to global config if not found</span>
+
+<span class="cmt"># Global config (fallback):</span>
+gateway/config/global.yaml
+            </div>
+
+            <div class="section-title" style="margin-top:12px;">.ENV EXAMPLE</div>
+            <div class="code-block" style="font-size:10px;line-height:1.9;">
+<span class="cmt"># env/.env.example</span>
+<span class="cmt"># Copy to .env — never commit .env</span>
+
+<span class="cmt"># Required (LM Studio default)</span>
+<span class="kw">LM_STUDIO_URL</span>=http://localhost:1234/v1
+
+<span class="cmt"># Optional (Claude provider)</span>
+<span class="kw">ANTHROPIC_API_KEY</span>=sk-ant-...
+
+<span class="cmt"># Optional (OpenAI fallback)</span>
+<span class="kw">OPENAI_API_KEY</span>=sk-...
+
+<span class="cmt"># Gateway settings</span>
+<span class="kw">GATEWAY_PORT</span>=7892
+<span class="kw">GATEWAY_HOST</span>=0.0.0.0
+<span class="kw">DATA_DIR</span>=./data
+<span class="kw">LOG_LEVEL</span>=INFO
+            </div>
+          </div>
+          <div>
+            <div class="section-title">CI PIPELINE (.github/workflows/ci.yaml)</div>
+            <div class="code-block" style="font-size:10px;line-height:1.9;">
+<span class="kw">on</span><span class="var">: [push, pull_request]</span>
+
+<span class="kw">jobs</span><span class="var">:</span>
+  <span class="kw">gateway</span><span class="var">:</span>
+    <span class="kw">runs-on</span><span class="var">: ubuntu-latest</span>
+    <span class="kw">steps</span><span class="var">:</span>
+      <span class="var">- uses: actions/checkout@v4</span>
+      <span class="var">- uses: actions/setup-python@v5</span>
+        <span class="kw">with</span><span class="var">: {python-version: "3.11"}</span>
+      <span class="var">- run: pip install -r gateway/requirements.txt</span>
+      <span class="var">- run: ruff check gateway/      </span><span class="cmt"># lint</span>
+      <span class="var">- run: black --check gateway/   </span><span class="cmt"># format</span>
+      <span class="var">- run: mypy gateway/            </span><span class="cmt"># types</span>
+      <span class="var">- run: pytest tests/smoke/      </span><span class="cmt"># smoke</span>
+      <span class="var">- run: pytest tests/integration/</span><span class="cmt"># integration</span>
+
+  <span class="kw">extension</span><span class="var">:</span>
+    <span class="kw">runs-on</span><span class="var">: ubuntu-latest</span>
+    <span class="kw">steps</span><span class="var">:</span>
+      <span class="var">- run: npm ci</span>
+      <span class="var">- run: npm run lint</span>
+      <span class="var">- run: npm run typecheck</span>
+      <span class="var">- run: npm run build</span>
+
+  <span class="kw">security</span><span class="var">:</span>
+    <span class="kw">steps</span><span class="var">:</span>
+      <span class="var">- run: pip-audit -r gateway/requirements.txt</span>
+      <span class="var">- run: npm audit --audit-level=high</span>
+      <span class="var">- uses: gitleaks/gitleaks-action@v2</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== ROADMAP TAB ==================== -->
+<div id="tab-roadmap" class="tab-content">
+  <div class="panel-grid panel-grid-4">
+    <div class="panel">
+      <div class="panel-hdr"><span class="icon">🔴</span> PHASE 1 — WEEK 1 (BLOCKERS)</div>
+      <div class="panel-body">
+        <div class="status-row">
+          <div class="status-dot dot-miss pulse"></div>
+          <div><div class="label">1.1 Build PixelClaw Gateway</div><div class="desc">FastAPI + health endpoint + WebSocket chat endpoint + startup config loader</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-miss pulse"></div>
+          <div><div class="label">1.2 Provider Router</div><div class="desc">LM Studio (default) + Claude (optional). Config from .pixelclaw.yaml or .env</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-miss pulse"></div>
+          <div><div class="label">1.3 ZeroClaw Subprocess Wrapper</div><div class="desc">asyncio subprocess + timeout + structured output capture. Patch --json-output or stdout parser</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-miss pulse"></div>
+          <div><div class="label">1.4 JSONL Emitter</div><div class="desc">Write animation events to PixelAgents watch folder on each Gateway action</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-miss pulse"></div>
+          <div><div class="label">1.5 PixelAgents Extension Patch</div><div class="desc">Add Gateway connection + send prompts via WebSocket instead of hardcoded path</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-miss pulse"></div>
+          <div><div class="label">1.6 Doctor Script</div><div class="desc">scripts/doctor.ps1 — verify all prerequisites before running</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-miss pulse"></div>
+          <div><div class="label">1.7 Smoke Tests</div><div class="desc">pytest: Gateway boot → health check → LM Studio ping → ZeroClaw --version</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="icon">🟡</span> PHASE 2 — WEEK 2 (MEMORY + MCP)</div>
+      <div class="panel-body">
+        <div class="status-row">
+          <div class="status-dot dot-plan"></div>
+          <div><div class="label">2.1 SQLite-vec Memory Store</div><div class="desc">Per-project memory namespaces. Write after each session. Retrieve top-k on each request.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-plan"></div>
+          <div><div class="label">2.2 Embedding Pipeline</div><div class="desc">nomic-embed-text via LM Studio. Embed all user+agent turns for retrieval.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-plan"></div>
+          <div><div class="label">2.3 MCP Server Host</div><div class="desc">Spawn filesystem + git MCP servers from Gateway. Expose as tools to provider.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-plan"></div>
+          <div><div class="label">2.4 Task History Panel</div><div class="desc">SQLite task_log. VS Code webview shows completed/pending task history per project.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-plan"></div>
+          <div><div class="label">2.5 Per-Project Config Auto-Load</div><div class="desc">Extension sends workspace path → Gateway finds .pixelclaw.yaml → auto-configure</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-plan"></div>
+          <div><div class="label">2.6 Claude API Provider Path</div><div class="desc">Full Anthropic client integration in ProviderRouter. Tool-use support via Claude's native tool API.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-plan"></div>
+          <div><div class="label">2.7 Docker Compose Stack</div><div class="desc">Gateway container + volume mounts. LM Studio remains on host, reached via host.docker.internal.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="icon">🟢</span> PHASE 3 — WEEK 3 (POLISH + CLAUDE)</div>
+      <div class="panel-body">
+        <div class="status-row">
+          <div class="status-dot dot-ok" style="opacity:0.4"></div>
+          <div><div class="label">3.1 Claude Desktop MCP Registration</div><div class="desc">Gateway exposes /mcp endpoint. Register in claude_desktop_config.json. Zero-code win.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-ok" style="opacity:0.4"></div>
+          <div><div class="label">3.2 Claude Code VS Code Bridge</div><div class="desc">VS Code API calls to trigger Claude Code commands from PixelAgent chat panel. Character animates on Claude Code edits.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-ok" style="opacity:0.4"></div>
+          <div><div class="label">3.3 Provider Selector UI</div><div class="desc">Dropdown in VS Code panel: LM Studio / Claude / Auto. Persisted per project.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-ok" style="opacity:0.4"></div>
+          <div><div class="label">3.4 Status Bar Indicators</div><div class="desc">VS Code status bar shows: Gateway ✓ | Provider: LM Studio | Model: llama-3.3-70b</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-ok" style="opacity:0.4"></div>
+          <div><div class="label">3.5 Integration Test Suite</div><div class="desc">Full round-trip: prompt → provider → ZeroClaw → JSONL emitted → memory stored. Verified against real Gateway.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-ok" style="opacity:0.4"></div>
+          <div><div class="label">3.6 CI Pipeline</div><div class="desc">GitHub Actions: lint + typecheck + smoke + integration + security + build. Zero warnings policy.</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hdr"><span class="icon">🔷</span> PHASE 4 — FUTURE (MULTI-AGENT)</div>
+      <div class="panel-body">
+        <div class="status-row">
+          <div class="status-dot dot-plan" style="opacity:0.4"></div>
+          <div><div class="label">4.1 Tool Registry UI</div><div class="desc">Webview panel listing all tools. Toggle on/off. View last execution. Set per-tool configs.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-plan" style="opacity:0.4"></div>
+          <div><div class="label">4.2 Multi-Agent Orchestration</div><div class="desc">Multiple ZeroClaw instances. Gateway agent registry. Message bus between agents. Each agent = one PixelAgents character.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-plan" style="opacity:0.4"></div>
+          <div><div class="label">4.3 Custom MCP Server Builder</div><div class="desc">UI to create project-specific MCP tools (e.g., fuel center tools, inventory tools). No-code tool registration.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-plan" style="opacity:0.4"></div>
+          <div><div class="label">4.4 Visual Workflow Designer</div><div class="desc">Drag-and-drop agent pipeline builder. Chain: ZeroClaw → Memory → Provider → MCP tool → Output.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-plan" style="opacity:0.4"></div>
+          <div><div class="label">4.5 Second GPU Support</div><div class="desc">Route embeddings to RTX 3060 Ti (12GB). Keep inference on 3090 Ti (24GB). Optional Tesla P40 for batch work.</div></div>
+        </div>
+        <div class="status-row">
+          <div class="status-dot dot-plan" style="opacity:0.4"></div>
+          <div><div class="label">4.6 Scheduled Agent Tasks</div><div class="desc">Cron-based ZeroClaw execution. Character animates on schedule. Results logged to memory + task_log.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:12px;">
+    <div class="panel-hdr"><span class="icon">🚀</span> RECOMMENDED BUILD ORDER — Start Here</div>
+    <div class="panel-body">
+      <div class="flow" style="flex-wrap:wrap;gap:8px;">
+        <div class="flow-node fn-orange" style="min-width:120px;">1. Gateway<br><span style="font-size:10px;color:var(--text2)">FastAPI skeleton + /health</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-yellow" style="min-width:120px;">2. LM Studio<br><span style="font-size:10px;color:var(--text2)">Provider router ping test</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-green" style="min-width:120px;">3. ZeroClaw Wrap<br><span style="font-size:10px;color:var(--text2)">Subprocess + timeout</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-accent" style="min-width:120px;">4. JSONL Emitter<br><span style="font-size:10px;color:var(--text2)">Animation trigger works</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-orange" style="min-width:120px;">5. Extension Patch<br><span style="font-size:10px;color:var(--text2)">WebSocket → Gateway</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-purple" style="min-width:120px;">6. Memory Layer<br><span style="font-size:10px;color:var(--text2)">SQLite-vec + embeddings</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-green" style="min-width:120px;">7. MCP Servers<br><span style="font-size:10px;color:var(--text2)">filesystem + git tools</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node fn-accent" style="min-width:120px;">8. Claude Optional<br><span style="font-size:10px;color:var(--text2)">Provider + Desktop MCP</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end main -->
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.querySelector(`#tab-${id}`).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function toggleAcc(hdr) {
+  hdr.classList.toggle('open');
+  const body = hdr.nextElementSibling;
+  body.classList.toggle('open');
+}
+</script>
+</body>
+</html>

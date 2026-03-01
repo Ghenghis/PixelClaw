@@ -1,0 +1,163 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      lm_studio_url:
+        description: "LM Studio URL (leave empty to skip LM Studio tests)"
+        required: false
+        default: ""
+
+jobs:
+  e2e-build-tests:
+    name: Build Integrity & Config E2E
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install extension dependencies
+        run: |
+          cd extension
+          npm install --include=dev
+          cd webview-ui
+          npm install --include=dev
+
+      - name: Build extension
+        run: |
+          cd extension
+          node esbuild.js --production
+
+      - name: Build webview-ui
+        run: |
+          cd extension/webview-ui
+          npx tsc -b
+          npx vite build
+
+      - name: Install test dependencies
+        run: |
+          cd tests
+          npm install --include=dev
+
+      - name: Install Playwright
+        run: |
+          cd tests
+          npx playwright install --with-deps chromium
+
+      - name: Run build integrity tests
+        run: |
+          cd tests
+          npx playwright test --project=build-integrity
+
+      - name: Run extension config tests
+        run: |
+          cd tests
+          npx playwright test --project=extension-e2e
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-build
+          path: tests/playwright-report/
+          retention-days: 7
+
+  e2e-lmstudio-tests:
+    name: LM Studio API E2E
+    runs-on: windows-latest
+    if: github.event.inputs.lm_studio_url != ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install test dependencies
+        run: |
+          cd tests
+          npm install --include=dev
+
+      - name: Install Playwright
+        run: |
+          cd tests
+          npx playwright install --with-deps chromium
+
+      - name: Run LM Studio API tests
+        env:
+          LM_STUDIO_URL: ${{ github.event.inputs.lm_studio_url }}
+        run: |
+          cd tests
+          npx playwright test --project=lm-studio-api
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-lmstudio
+          path: tests/playwright-report/
+          retention-days: 7
+
+  e2e-release-tests:
+    name: Release Artifacts E2E
+    runs-on: windows-latest
+    needs: e2e-build-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install all dependencies
+        run: |
+          cd extension
+          npm install --include=dev
+          cd webview-ui
+          npm install --include=dev
+
+      - name: Build everything
+        run: |
+          cd extension
+          npm run build
+
+      - name: Create releases directory
+        run: New-Item -ItemType Directory -Force -Path releases
+
+      - name: Package VSIX
+        run: |
+          cd extension
+          npx @vscode/vsce package --no-dependencies -o ../releases/pixelclaw-latest.vsix
+
+      - name: Package Windows ZIP
+        run: node scripts/package-zip.js
+
+      - name: Install test dependencies
+        run: |
+          cd tests
+          npm install --include=dev
+
+      - name: Install Playwright
+        run: |
+          cd tests
+          npx playwright install --with-deps chromium
+
+      - name: Run release artifact tests
+        run: |
+          cd tests
+          npx playwright test --project=release-artifacts
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-release
+          path: tests/playwright-report/
+          retention-days: 7

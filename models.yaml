@@ -1,0 +1,653 @@
+# PixelClaw Model Registry
+# Defines all available models, agent roles, and routing rules.
+#
+# Model locations:
+#   Primary:   C:\Users\Admin\.lmstudio\models  (52 models, ~481 GB)
+#   Secondary: Configurable via model_directories below
+#
+# Agent roles determine which models are loaded for each task type.
+# VRAM tiers control automatic load/unload behavior based on available GPU memory.
+
+model_directories:
+  - "C:\\Users\\Admin\\.lmstudio\\models"
+  # Add additional model directories here:
+  # - "D:\\models\\gguf"
+  # - "E:\\ai-models"
+
+# ─── VRAM Tiers ──────────────────────────────────────────────────────────────
+# Agents pick the best model that fits in available VRAM.
+# tier_preference: [ultra, large, medium, small, tiny] — fallback order
+vram_tiers:
+  ultra:   { min_vram_gb: 40, description: "48+ GB VRAM (dual GPU or A6000+)" }
+  large:   { min_vram_gb: 20, description: "24 GB VRAM (RTX 4090, 3090)" }
+  medium:  { min_vram_gb: 8,  description: "12 GB VRAM (RTX 4070, 3060 12GB)" }
+  small:   { min_vram_gb: 4,  description: "6-8 GB VRAM (RTX 3060, 4060)" }
+  tiny:    { min_vram_gb: 2,  description: "4 GB VRAM or CPU-only" }
+
+# ─── Agent Roles ─────────────────────────────────────────────────────────────
+# Each agent role has a tier_preference (fallback order) and recommended models per tier.
+agent_roles:
+  code:
+    description: "Writes, edits, and reviews code"
+    tier_preference: [large, medium, small, ultra, tiny]
+    models:
+      ultra:
+        - qwen/qwen3-coder-next                  # 80B Q4_K_M — flagship coder
+      large:
+        - unsloth/qwen3-coder-30b-a3b-instruct   # 30B-A3B MoE Q5_K_XL — best MoE coder
+        - spectralyst/qwen3-coder-reap-25b-a3b_moe # 103x1.8B MoE — experimental
+        - mistralai/devstral-small-2-2512         # 24B Q4_K_M — Mistral coding
+      medium:
+        - Nerdsking/nerdsking-python-coder-7b-i   # 7.6B Q8_0 — current default
+        - DavidAU/glm-4.7-flash-uncensored-heretic-neo-code-imatrix-max  # 64x2.6B Q6_K
+      small:
+        - Nerdsking/nerdsking-python-coder-3b-i   # 3.1B Q8_0 — fast lightweight
+        - unsloth/qwen3-4b-instruct-2507          # 4B Q6_K_XL
+      tiny:
+        - mradermacher/qwen2.5-coder-3b-instruct-distill-qwen3-coder-next-abliterated  # 3B Q4_K_S
+
+  reasoning:
+    description: "Complex problem solving, architecture decisions, planning"
+    tier_preference: [large, medium, ultra, small]
+    models:
+      ultra:
+        - qwen/qwen3-coder-next                  # 80B — also excellent at reasoning
+      large:
+        - zai-org/glm-4.7-flash                   # 30B Q4_K_M
+        - DavidAU/qwen3-24b-a4b-freedom-thinking-abliterated-heretic-neo-imatrix  # 4x6B MoE Q8_0
+      medium:
+        - openai/gpt-oss-20b                      # 20B MXFP4 — reasoning.effort support
+        - mistralai/ministral-3-14b-reasoning     # 14B Q4_K_M — reasoning-focused
+        - zai-org/glm-4.6v-flash                  # 9.4B Q4_K_M
+      small:
+        - DavidAU/qwen3-4b-gemini-triplex-high-reasoning-thinking-heretic-uncensored  # 4B Q8_0
+
+  vision:
+    description: "Analyzes screenshots, UI elements, images, visual debugging"
+    tier_preference: [large, medium, small]
+    models:
+      large:
+        - mradermacher/huihui-qwen3-vl-32b-instruct-abliterated  # 32B Q5_K_S
+        - mradermacher/qwen2.5-vl-32b-instruct-abliterated       # 32B Q6_K
+        - OpenMOSE/qwen3-vl-reap-24b-a3b         # 96x1.8B MoE Q4_K_M
+      medium:
+        - mradermacher/qwen3-vl-8b-instruct-abliterated-v2.0     # 8B Q8_0
+        - zai-org/glm-4.6v-flash                  # 9.4B Q4_K_M (vision capable)
+      small:
+        - lmstudio-community/qwen/qwen3-vl-4b    # 4B Q6_K — best small vision
+        - huihui-ai/qwen2.5-vl-3b-instruct-abliterated  # 3B Q4_K_M
+        - prithivMLmods/qwen3-vl-2b-thinking-abliterated-v1  # 2B F16
+        - mradermacher/qwen3-vl-2b-instruct-abliterated  # 2B Q6_K
+        - lmstudio-community/qwen2-vl-2b-instruct # 2B Q8_0
+
+  tool_use:
+    description: "MCP tool calling, function execution, agent orchestration"
+    tier_preference: [medium, large, small]
+    models:
+      large:
+        - unsloth/qwen3-coder-30b-a3b-instruct   # MoE, trained for tool use
+        - mistralai/devstral-small-2-2512         # 24B, strong tool calling
+      medium:
+        - Nerdsking/nerdsking-python-coder-7b-i   # 7.6B — tool use capable
+        - openai/gpt-oss-20b                      # 20B — good at structured output
+        - mistralai/ministral-3-14b-reasoning     # 14B
+      small:
+        - Nerdsking/nerdsking-python-coder-3b-i   # 3.1B
+        - NovachronoAI/ministral-3b-instruct-abliterated  # 3.4B Q4_K_M
+
+  chat:
+    description: "General conversation, documentation, explanations"
+    tier_preference: [medium, small, large]
+    models:
+      large:
+        - zai-org/glm-4.7-flash                   # 30B Q4_K_M
+        - DavidAU/qwen3-24b-a4b-freedom-thinking-abliterated-heretic-neo-imatrix
+      medium:
+        - dphn/dolphin3.0-llama3.1-8b             # 8B Q8_0 — good general chat
+        - openai/gpt-oss-20b                      # 20B
+        - zai-org/glm-4.6v-flash                  # 9.4B
+      small:
+        - unsloth/qwen3-4b-instruct-2507          # 4B Q6_K_XL
+        - NovachronoAI/ministral-3b-instruct-abliterated  # 3.4B
+
+  evony:
+    description: "Evony-specific game knowledge (custom fine-tuned models)"
+    tier_preference: [medium, small, large]
+    models:
+      large:
+        - Borg/evony-7b-3800                      # F16 15.2 GB — highest quality
+        - Borg/evony-qwen3-8b-phase2@f16          # F16 15.2 GB
+      medium:
+        - Borg/evony-qwen3-8b-phase2@q8_0         # Q8_0 8.1 GB
+        - Borg/evony-7b-3800-rtx3090ti            # Q8 8.1 GB
+        - Borg/evony-7b-rtx3090ti                 # Q8 8.1 GB
+        - Borg/evony-7b-3800-rx7800xt             # Q6 6.3 GB
+      small:
+        - Borg/evony-qwen3-8b-phase2@q4_k_m       # Q4_K_M 4.7 GB
+        - Borg/evony-7b-3800-rtx3060              # Q4 4.7 GB
+        - Borg/evony-7b-rtx3060                   # Q4 4.7 GB
+      tiny:
+        - Borg/evony-7b-3800-speed                # Q3 3.8 GB
+        - Borg/evony-7b-speed                     # Q3 3.8 GB
+        - Borg/evony-7b-3800-ultrafast            # Q2 3.0 GB
+        - Borg/evony-7b-ultrafast                 # Q2 3.0 GB
+
+# ─── Full Model Inventory ────────────────────────────────────────────────────
+# All 52 models with metadata for discovery and management.
+
+models:
+  # ── Coding Models ────────────────────────────────────────────────────────
+  - id: "qwen/qwen3-coder-next"
+    arch: qwen3next
+    params: "80B"
+    quant: Q4_K_M
+    size_gb: 48.5
+    capabilities: [code, reasoning, tool_use, chat]
+    moe: false
+    tier: ultra
+
+  - id: "unsloth/qwen3-coder-30b-a3b-instruct"
+    file: "qwen3-coder-30b-a3b-instruct/Qwen3-Coder-30B-A3B-Instruct-UD-Q5_K_XL.gguf"
+    arch: qwen3moe
+    params: "30B-A3B"
+    quant: Q5_K_XL
+    size_gb: 21.7
+    capabilities: [code, tool_use]
+    moe: true
+    tier: large
+
+  - id: "spectralyst/qwen3-coder-reap-25b-a3b_moe"
+    file: "qwen3-coder-reap-25b-a3b_moe/Qwen3-Coder-REAP-25B-A3B-MXFP4_MOE.gguf"
+    arch: qwen3moe
+    params: "103x1.8B"
+    quant: MXFP4
+    size_gb: 14.1
+    capabilities: [code]
+    moe: true
+    tier: large
+
+  - id: "mistralai/devstral-small-2-2512"
+    arch: mistral3
+    params: "24B"
+    quant: Q4_K_M
+    size_gb: 15.2
+    capabilities: [code, tool_use, chat]
+    moe: false
+    tier: large
+
+  - id: "Nerdsking/nerdsking-python-coder-7b-i"
+    file: "nerdsking-python-coder-7b-i/nerdsking-python-coder-7B-i-Q8_0_i.gguf"
+    arch: qwen2
+    params: "7.6B"
+    quant: Q8_0
+    size_gb: 8.1
+    capabilities: [code, tool_use]
+    moe: false
+    tier: medium
+
+  - id: "Nerdsking/nerdsking-python-coder-3b-i"
+    file: "nerdsking-python-coder-3b-i/nerdsking-python-coder-3B-i_Q8_0.gguf"
+    arch: qwen2
+    params: "3.1B"
+    quant: Q8_0
+    size_gb: 3.3
+    capabilities: [code]
+    moe: false
+    tier: small
+
+  - id: "mradermacher/qwen2.5-coder-3b-instruct-distill-qwen3-coder-next-abliterated"
+    file: "qwen2.5-coder-3b-instruct-distill-qwen3-coder-next-abliterated-i1/Qwen2.5-Coder-3B-Instruct-Distill-Qwen3-Coder-Next-abliterated.i1-Q4_K_S.gguf"
+    arch: qwen2
+    params: "3B"
+    quant: Q4_K_S
+    size_gb: 1.8
+    capabilities: [code]
+    moe: false
+    tier: tiny
+
+  # ── Reasoning Models ─────────────────────────────────────────────────────
+  - id: "openai/gpt-oss-20b"
+    arch: gpt-oss
+    params: "20B"
+    quant: MXFP4
+    size_gb: 12.1
+    capabilities: [reasoning, chat, tool_use]
+    moe: false
+    tier: medium
+    notes: "Supports reasoning.effort parameter"
+
+  - id: "mistralai/ministral-3-14b-reasoning"
+    arch: mistral3
+    params: "14B"
+    quant: Q4_K_M
+    size_gb: 9.1
+    capabilities: [reasoning, tool_use]
+    moe: false
+    tier: medium
+
+  - id: "DavidAU/qwen3-4b-gemini-triplex-high-reasoning-thinking-heretic-uncensored"
+    file: "qwen3-4b-gemini-triplex-high-reasoning-thinking-heretic-uncensored/Qwen3-4B-TripleX-Heretic-Uncensored-Q8_0.gguf"
+    arch: qwen3
+    params: "4B"
+    quant: Q8_0
+    size_gb: 4.3
+    capabilities: [reasoning, chat]
+    moe: false
+    tier: small
+
+  # ── GLM Models ───────────────────────────────────────────────────────────
+  - id: "DavidAU/glm-4.7-flash-uncensored-heretic-neo-code-imatrix-max"
+    file: "glm-4.7-flash-uncensored-heretic-neo-code-imatrix-max/GLM-4.7-Flash-Uncen-Hrt-NEO-CODE-MAX-imat-D_AU-Q6_K.gguf"
+    arch: deepseek2
+    params: "64x2.6B"
+    quant: Q6_K
+    size_gb: 25.0
+    capabilities: [code, reasoning, chat]
+    moe: true
+    tier: large
+
+  - id: "zai-org/glm-4.7-flash"
+    arch: deepseek2
+    params: "30B"
+    quant: Q4_K_M
+    size_gb: 18.1
+    capabilities: [reasoning, chat, tool_use]
+    moe: false
+    tier: large
+
+  - id: "zai-org/glm-4.6v-flash"
+    arch: glm4
+    params: "9.4B"
+    quant: Q4_K_M
+    size_gb: 8.0
+    capabilities: [vision, reasoning, chat]
+    moe: false
+    tier: medium
+
+  # ── General / Uncensored LLMs ────────────────────────────────────────────
+  - id: "DavidAU/qwen3-24b-a4b-freedom-thinking-abliterated-heretic-neo-imatrix"
+    file: "qwen3-24b-a4b-freedom-thinking-abliterated-heretic-neo-imatrix/Qwen3-24B-A4B-Freedom-Think-Ablit-Heretic-Neo-D_AU-Q8_0.gguf"
+    arch: qwen3moe
+    params: "4x6B"
+    quant: Q8_0
+    size_gb: 18.6
+    capabilities: [reasoning, chat]
+    moe: true
+    tier: large
+
+  - id: "unsloth/qwen3-4b-instruct-2507"
+    file: "qwen3-4b-instruct-2507/Qwen3-4B-Instruct-2507-UD-Q6_K_XL.gguf"
+    arch: qwen3
+    params: "4B"
+    quant: Q6_K_XL
+    size_gb: 3.7
+    capabilities: [chat, code]
+    moe: false
+    tier: small
+
+  - id: "dphn/dolphin3.0-llama3.1-8b"
+    file: "dolphin3.0-llama3.1-8b/Dolphin3.0-Llama3.1-8B-Q8_0.gguf"
+    arch: llama
+    params: "8B"
+    quant: Q8_0
+    size_gb: 8.5
+    capabilities: [chat]
+    moe: false
+    tier: medium
+
+  - id: "TheBloke/mythomax-l2-13b"
+    file: "mythomax-l2-13b/mythomax-l2-13b.Q8_0.gguf"
+    arch: llama
+    params: "13B"
+    quant: Q8_0
+    size_gb: 13.8
+    capabilities: [chat]
+    moe: false
+    tier: large
+
+  - id: "NovachronoAI/ministral-3b-instruct-abliterated"
+    file: "ministral-3b-instruct-abliterated/ministral-3b-abliterated-Q4_K_M.gguf"
+    arch: llama
+    params: "3.4B"
+    quant: Q4_K_M
+    size_gb: 2.1
+    capabilities: [chat, tool_use]
+    moe: false
+    tier: small
+
+  - id: "samunder12/llama-3.1-8b-roleplay-bsnl"
+    file: "llama-3.1-8b-roleplay-bsnl/Llama3BSNL.Q4_K_M.gguf"
+    arch: llama
+    params: "8B"
+    quant: Q4_K_M
+    size_gb: 4.9
+    capabilities: [chat]
+    moe: false
+    tier: small
+
+  # ── Vision Models ────────────────────────────────────────────────────────
+  - id: "mradermacher/huihui-qwen3-vl-32b-instruct-abliterated"
+    file: "huihui-qwen3-vl-32b-instruct-abliterated-i1/Huihui-Qwen3-VL-32B-Instruct-abliterated.i1-Q5_K_S.gguf"
+    arch: qwen3vl
+    params: "32B"
+    quant: Q5_K_S
+    size_gb: 22.6
+    capabilities: [vision, reasoning, chat]
+    moe: false
+    tier: large
+
+  - id: "mradermacher/qwen2.5-vl-32b-instruct-abliterated"
+    file: "qwen2.5-vl-32b-instruct-abliterated-i1/Qwen2.5-VL-32B-Instruct-abliterated.i1-Q6_K.gguf"
+    arch: qwen2vl
+    params: "32B"
+    quant: Q6_K
+    size_gb: 26.9
+    capabilities: [vision, reasoning, chat]
+    moe: false
+    tier: large
+
+  - id: "OpenMOSE/qwen3-vl-reap-24b-a3b"
+    file: "qwen3-vl-reap-24b-a3b/qwen3-vl-24b-reap-Q4_K_M.gguf"
+    arch: qwen3vlmoe
+    params: "96x1.8B"
+    quant: Q4_K_M
+    size_gb: 15.2
+    capabilities: [vision]
+    moe: true
+    tier: large
+
+  - id: "mradermacher/qwen3-vl-8b-instruct-abliterated-v2.0"
+    file: "qwen3-vl-8b-instruct-abliterated-v2.0/Qwen3-VL-8B-Instruct-abliterated-v2.0.Q8_0.gguf"
+    arch: qwen3vl
+    params: "8B"
+    quant: Q8_0
+    size_gb: 9.9
+    capabilities: [vision, chat]
+    moe: false
+    tier: medium
+
+  - id: "lmstudio-community/qwen3-vl-4b"
+    arch: qwen3vl
+    params: "4B"
+    quant: Q6_K
+    size_gb: 4.1
+    capabilities: [vision]
+    moe: false
+    tier: small
+
+  - id: "huihui-ai/qwen2.5-vl-3b-instruct-abliterated"
+    file: "qwen2.5-vl-3b-instruct-abliterated/ggml-model-Q4_K_M.gguf"
+    arch: qwen2vl
+    params: "3B"
+    quant: Q4_K_M
+    size_gb: 3.3
+    capabilities: [vision]
+    moe: false
+    tier: small
+
+  - id: "prithivMLmods/qwen3-vl-2b-thinking-abliterated-v1@f16"
+    file: "qwen3-vl-2b-thinking-abliterated-v1@f16/Qwen3-VL-2B-Thinking-abliterated-v1.f16.gguf"
+    arch: qwen3vl
+    params: "2B"
+    quant: F16
+    size_gb: 4.3
+    capabilities: [vision]
+    moe: false
+    tier: small
+
+  - id: "prithivMLmods/qwen3-vl-2b-thinking-abliterated-v1@q8_0"
+    file: "qwen3-vl-2b-thinking-abliterated-v1@q8_0/Qwen3-VL-2B-Thinking-abliterated-v1.Q8_0.gguf"
+    arch: qwen3vl
+    params: "2B"
+    quant: Q8_0
+    size_gb: 2.7
+    capabilities: [vision]
+    moe: false
+    tier: small
+
+  - id: "mradermacher/qwen3-vl-2b-instruct-abliterated"
+    file: "qwen3-vl-2b-instruct-abliterated/Qwen3-VL-2B-Instruct-abliterated.Q6_K.gguf"
+    arch: qwen3vl
+    params: "2B"
+    quant: Q6_K
+    size_gb: 2.2
+    capabilities: [vision]
+    moe: false
+    tier: small
+
+  - id: "mradermacher/qwen3-vl-2b-instruct-abliterated-i1"
+    file: "qwen3-vl-2b-instruct-abliterated-i1/Qwen3-VL-2B-Instruct-abliterated.i1-Q6_K.gguf"
+    arch: qwen3vl
+    params: "2B"
+    quant: Q6_K
+    size_gb: 1.4
+    capabilities: [vision]
+    moe: false
+    tier: tiny
+
+  - id: "lmstudio-community/qwen2-vl-2b-instruct"
+    file: "qwen2-vl-2b-instruct/Qwen2-VL-2B-Instruct-Q8_0.gguf"
+    arch: qwen2vl
+    params: "2B"
+    quant: Q8_0
+    size_gb: 4.3
+    capabilities: [vision]
+    moe: false
+    tier: small
+
+  # ── Evony Models (Custom Fine-Tuned) ─────────────────────────────────────
+  - id: "Borg/evony-7b-3800"
+    file: "evony-7b-3800/evony-7b-3800-f16.gguf"
+    arch: qwen2
+    params: "7B"
+    quant: F16
+    size_gb: 15.2
+    capabilities: [evony]
+    moe: false
+    tier: large
+
+  - id: "Borg/evony-7b-3800-rtx3090ti"
+    file: "evony-7b-3800-rtx3090ti/evony-7b-3800-RTX3090Ti-Q8.gguf"
+    arch: qwen2
+    params: "7B"
+    quant: Q8
+    size_gb: 8.1
+    capabilities: [evony]
+    moe: false
+    tier: medium
+
+  - id: "Borg/evony-7b-3800-rx7800xt"
+    file: "evony-7b-3800-rx7800xt/evony-7b-3800-RX7800XT-Q6.gguf"
+    arch: qwen2
+    params: "7B"
+    quant: Q6
+    size_gb: 6.3
+    capabilities: [evony]
+    moe: false
+    tier: medium
+
+  - id: "Borg/evony-7b-3800-rtx3060"
+    file: "evony-7b-3800-rtx3060/evony-7b-3800-RTX3060-Q4.gguf"
+    arch: qwen2
+    params: "7B"
+    quant: Q4
+    size_gb: 4.7
+    capabilities: [evony]
+    moe: false
+    tier: small
+
+  - id: "Borg/evony-7b-3800-speed"
+    file: "evony-7b-3800-speed/evony-7b-3800-Speed-Q3.gguf"
+    arch: qwen2
+    params: "7B"
+    quant: Q3
+    size_gb: 3.8
+    capabilities: [evony]
+    moe: false
+    tier: small
+
+  - id: "Borg/evony-7b-3800-ultrafast"
+    file: "evony-7b-3800-ultrafast/evony-7b-3800-Ultrafast-Q2.gguf"
+    arch: qwen2
+    params: "7B"
+    quant: Q2
+    size_gb: 3.0
+    capabilities: [evony]
+    moe: false
+    tier: tiny
+
+  - id: "Borg/evony-7b"
+    file: "evony-7b/evony-7b-f16.gguf"
+    arch: qwen2
+    params: "7B"
+    quant: F16
+    size_gb: 15.2
+    capabilities: [evony]
+    moe: false
+    tier: large
+
+  - id: "Borg/evony-7b-rtx3090ti"
+    file: "evony-7b-rtx3090ti/evony-7b-RTX3090Ti-Q8.gguf"
+    arch: qwen2
+    params: "7B"
+    quant: Q8
+    size_gb: 8.1
+    capabilities: [evony]
+    moe: false
+    tier: medium
+
+  - id: "Borg/evony-7b-rx7800xt"
+    file: "evony-7b-rx7800xt/evony-7b-RX7800XT-Q6.gguf"
+    arch: qwen2
+    params: "7B"
+    quant: Q6
+    size_gb: 6.3
+    capabilities: [evony]
+    moe: false
+    tier: medium
+
+  - id: "Borg/evony-7b-rtx3060"
+    file: "evony-7b-rtx3060/evony-7b-RTX3060-Q4.gguf"
+    arch: qwen2
+    params: "7B"
+    quant: Q4
+    size_gb: 4.7
+    capabilities: [evony]
+    moe: false
+    tier: small
+
+  - id: "Borg/evony-7b-speed"
+    file: "evony-7b-speed/evony-7b-Speed-Q3.gguf"
+    arch: qwen2
+    params: "7B"
+    quant: Q3
+    size_gb: 3.8
+    capabilities: [evony]
+    moe: false
+    tier: small
+
+  - id: "Borg/evony-7b-ultrafast"
+    file: "evony-7b-ultrafast/evony-7b-UltraFast-Q2.gguf"
+    arch: qwen2
+    params: "7B"
+    quant: Q2
+    size_gb: 3.0
+    capabilities: [evony]
+    moe: false
+    tier: tiny
+
+  - id: "Borg/evony-qwen3-8b-phase2@q8_0"
+    file: "evony-qwen3-8b-phase2@q8_0/evony-qwen3-8b-phase2-Q8_0.gguf"
+    arch: qwen2
+    params: "8B"
+    quant: Q8_0
+    size_gb: 8.1
+    capabilities: [evony]
+    moe: false
+    tier: medium
+
+  - id: "Borg/evony-qwen3-8b-phase2@q4_k_m"
+    file: "evony-qwen3-8b-phase2@q4_k_m/evony-qwen3-8b-phase2-Q4_K_M.gguf"
+    arch: qwen2
+    params: "8B"
+    quant: Q4_K_M
+    size_gb: 4.7
+    capabilities: [evony]
+    moe: false
+    tier: small
+
+  - id: "Borg/evony-qwen3-8b-phase2@f16"
+    file: "evony-qwen3-8b-phase2@f16/evony-qwen3-8b-phase2-F16.gguf"
+    arch: qwen2
+    params: "8B"
+    quant: F16
+    size_gb: 15.2
+    capabilities: [evony]
+    moe: false
+    tier: large
+
+  # ── Specialty Models ─────────────────────────────────────────────────────
+  - id: "juntaoyuan/chemistry-assistant-7b"
+    file: "chemistry-assistant-7b/chemistry-assistant-7b-q5_k_m.gguf"
+    arch: llama
+    params: "8B"
+    quant: Q5_K_M
+    size_gb: 4.8
+    capabilities: [chat]
+    moe: false
+    tier: small
+    notes: "Chemistry domain specialist"
+
+  - id: "city96/wan2.1-t2v-14b"
+    file: "wan2.1-t2v-14b/wan2.1-t2v-14b-Q8_0.gguf"
+    arch: wan
+    params: "14B"
+    quant: Q8_0
+    size_gb: 15.9
+    capabilities: []
+    moe: false
+    tier: large
+    notes: "Text-to-video model — not used for chat"
+
+# ─── Recommended Downloads (Not Yet Installed) ───────────────────────────────
+# Models that would improve PixelClaw's capabilities if downloaded.
+
+recommended_downloads:
+  - id: "ibm/granite-4-micro"
+    reason: "Excellent tool calling, small footprint, recommended by LM Studio docs"
+    size_est: "~2 GB"
+
+  - id: "qwen/qwen3-8b"
+    reason: "Strong general-purpose 8B model, good balance of speed and quality"
+    size_est: "~5 GB"
+
+  - id: "nomic-ai/nomic-embed-text-v1.5"
+    reason: "Embedding model needed for RAG / memory / code search"
+    size_est: "~0.3 GB"
+
+  - id: "microsoft/phi-4-mini"
+    reason: "Small but capable coding/reasoning model from Microsoft"
+    size_est: "~2.5 GB"
+
+# ─── Model Switching Strategy ────────────────────────────────────────────────
+# How agents handle model transitions while maintaining conversation context.
+#
+# IMPORTANT: LM Studio's stateful chats (response_id / previous_response_id)
+# only work within the SAME model. When switching models:
+#
+# 1. Agent stores conversation summary in PixelClaw memory DB
+# 2. Current model is unloaded (if VRAM constrained)
+# 3. New model is loaded via POST /api/v1/models/load
+# 4. Agent replays relevant context as system_prompt + input
+# 5. New response_id chain begins with the new model
+#
+# For same-model continuations, use previous_response_id for zero-cost context.
+
+switching:
+  strategy: "memory_replay"
+  max_context_summary_tokens: 2000
+  auto_unload_idle_minutes: 30
+  parallel_models_max: 2
+  prefer_flash_attention: true
+  default_context_length: 8192
+  moe_context_length: 16384

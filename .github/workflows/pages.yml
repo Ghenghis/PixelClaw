@@ -1,0 +1,66 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build-pages:
+    name: Build Pages Site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Build site
+        run: |
+          mkdir -p _site
+          cp docs/index.html _site/index.html
+          cp docs/pixelclaw-architecture.html _site/pixelclaw-architecture.html
+          cp docs/ARCHITECTURE.md _site/ARCHITECTURE.md
+          cp docs/AGENT_CHAT_SYSTEM.md _site/AGENT_CHAT_SYSTEM.md
+          cp README.md _site/README.md
+          cp LICENSE _site/LICENSE
+
+          # Create a simple 404 page
+          cat > _site/404.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head><meta charset="UTF-8"><title>404 — PixelClaw</title>
+          <style>body{background:#080c10;color:#c8d8e8;font-family:monospace;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;}
+          .box{text-align:center;} h1{color:#00d4ff;font-size:48px;} a{color:#ff6b35;}</style></head>
+          <body><div class="box"><h1>404</h1><p>Page not found.</p><p><a href="/">← Back to PixelClaw</a></p></div></body>
+          </html>
+          EOF
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: build-pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

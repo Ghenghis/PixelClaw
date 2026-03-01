@@ -1,0 +1,32 @@
+{
+  "name": "pixelclaw",
+  "displayName": "PixelClaw",
+  "description": "Local-first visual AI agent platform — ZeroClaw + PixelAgents + LM Studio / Claude",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ghenghis/PixelClaw"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "install:all": "cd extension && npm install --include=dev && cd webview-ui && npm install --include=dev",
+    "build": "cd extension && npm run build",
+    "build:ext": "cd extension && node esbuild.js --production",
+    "build:webview": "cd extension/webview-ui && npm run build",
+    "lint": "cd extension && npm run lint",
+    "typecheck": "cd extension && npm run check-types",
+    "package": "cd extension && npx @vscode/vsce package --no-dependencies -o ../releases/pixelclaw-latest.vsix",
+    "package:zip": "node scripts/package-zip.js",
+    "doctor": "pwsh -ExecutionPolicy Bypass -File scripts/doctor.ps1",
+    "test:smoke": "node tests/smoke/run.js",
+    "test:e2e": "cd tests && npx playwright test",
+    "test:e2e:ui": "cd tests && npx playwright test --ui",
+    "test:e2e:report": "cd tests && npx playwright show-report",
+    "clean": "node -e \"const fs=require('fs'); ['extension/dist','releases'].forEach(d=>{if(fs.existsSync(d))fs.rmSync(d,{recursive:true})})\"",
+    "release": "npm run clean && npm run install:all && npm run build && npm run package && npm run package:zip"
+  }
+}

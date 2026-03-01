@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build & Validate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: |
+            extension/package-lock.json
+            extension/webview-ui/package-lock.json
+
+      - name: Install root dependencies
+        run: |
+          cd extension
+          npm install --include=dev
+
+      - name: Install webview-ui dependencies
+        run: |
+          cd extension/webview-ui
+          npm install --include=dev
+
+      - name: TypeScript type check
+        run: |
+          cd extension
+          npx tsc --noEmit
+
+      - name: Lint extension
+        run: |
+          cd extension
+          npm run lint
+
+      - name: Build extension (esbuild)
+        run: |
+          cd extension
+          node esbuild.js --production
+
+      - name: Build webview-ui (Vite)
+        run: |
+          cd extension/webview-ui
+          npx tsc -b
+          npx vite build
+
+      - name: Verify dist output exists
+        run: |
+          if (!(Test-Path "extension/dist/extension.js")) { throw "extension.js not found in dist/" }
+          if (!(Test-Path "extension/dist/webview/index.html")) { throw "webview index.html not found in dist/webview/" }
+          Write-Host "Build artifacts verified successfully"
+          Get-ChildItem extension/dist -Recurse | Select-Object FullName, Length | Format-Table -AutoSize
+
+      - name: Run smoke tests
+        run: node tests/smoke/run.js
+        continue-on-error: true
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pixelclaw-dist
+          path: extension/dist/
+          retention-days: 7

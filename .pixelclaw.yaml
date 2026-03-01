@@ -1,0 +1,66 @@
+# .pixelclaw.yaml — PixelClaw per-project configuration
+# Place in any VS Code workspace root for project-specific settings
+
+project:
+  name: "PixelClaw"
+  namespace: "pixelclaw-dev-v1"
+  description: "PixelClaw development workspace — visual AI agent platform"
+
+provider:
+  default: "lmstudio"
+  lmstudio:
+    # Two API layers — native and OpenAI-compatible:
+    #   Native REST API:   http://100.117.198.97:1234/api/v1/*
+    #   OpenAI-compatible: http://100.117.198.97:1234/v1/*
+    base_url: "http://100.117.198.97:1234/v1"
+    native_url: "http://100.117.198.97:1234/api/v1"
+    model: "nerdstking-python-coder-7b-i"
+    embed_model: "nomic-embed-text"
+    temperature: 0.7
+    max_tokens: 4096
+    # Authentication — set LM_API_TOKEN env var if auth is enabled
+    api_token_env: "LM_API_TOKEN"
+    # Server settings that must be enabled in LM Studio Developer → Server Settings:
+    server_requirements:
+      serve_on_local_network: true   # Required for remote access (non-localhost)
+      enable_cors: true              # Required for browser-based clients
+      allow_per_request_mcps: true   # Required for ephemeral MCP via API
+      allow_mcp_from_mcp_json: true  # Required for pre-configured MCP plugins
+      just_in_time_loading: false    # Optional — auto-loads models on request
+  claude:
+    model: "claude-sonnet-4-6"
+    api_key_env: "ANTHROPIC_API_KEY"
+    temperature: 0.7
+    max_tokens: 8192
+  override_provider: null
+
+sdk:
+  # Official LM Studio TypeScript SDK: npm install @lmstudio/sdk
+  lmstudio_js: "@lmstudio/sdk"
+  # Official LM Studio Python SDK: pip install lmstudio
+  lmstudio_python: "lmstudio"
+
+tools:
+  zeroclaw: true
+  filesystem: true
+  git: true
+  fetch: false
+  fetch_allowlist: []
+  mcp_servers:
+    - "filesystem"
+    - "git"
+
+memory:
+  enabled: true
+  top_k: 5
+  max_tokens: 4096
+  ttl_days: 30
+  embed_batch_size: 8
+
+persona:
+  name: "PixelClaw Dev"
+  avatar: "pixel_coder"
+  system_prompt: |
+    You are a senior software engineer assisting with the PixelClaw project.
+    You use ZeroClaw to execute tasks and always prefer making real
+    changes over providing instructions only.

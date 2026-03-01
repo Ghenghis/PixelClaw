@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PixelClaw — Local-First Visual AI Agent Platform</title>
+  <meta name="description"
+    content="Your AI agents, alive in your editor. Local-first multi-model multi-agent platform.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #060a0f;
+      --bg2: #0c1219;
+      --bg3: #111922;
+      --border: #1a2535;
+      --cyan: #00d4ff;
+      --orange: #ff6b35;
+      --green: #7fff00;
+      --yellow: #ffcc00;
+      --red: #ff3355;
+      --purple: #b464ff;
+      --text: #c8d8e8;
+      --text2: #6a8aaa;
+      --px: 4px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Rajdhani', sans-serif;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.03) 2px, rgba(0, 0, 0, 0.03) 4px);
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* NAV */
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: rgba(6, 10, 15, 0.9);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+      padding: 0 40px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-logo {
+      font-family: 'Orbitron', monospace;
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--cyan);
+      text-shadow: 0 0 20px var(--cyan);
+      letter-spacing: 3px;
+      text-decoration: none;
+    }
+
+    .nav-logo span {
+      color: var(--orange);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 28px;
+      align-items: center;
+    }
+
+    .nav-links a {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      color: var(--text2);
+      text-decoration: none;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      transition: color 0.3s;
+    }
+
+    .nav-links a:hover {
+      color: var(--cyan);
+    }
+
+    .btn-dl {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      padding: 7px 18px;
+      background: rgba(0, 212, 255, 0.1);
+      border: 1px solid rgba(0, 212, 255, 0.4);
+      color: var(--cyan);
+      border-radius: 3px;
+      text-decoration: none;
+      letter-spacing: 1px;
+      transition: all 0.3s;
+    }
+
+    .btn-dl:hover {
+      background: rgba(0, 212, 255, 0.2);
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+    }
+
+    /* HERO */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 100px 20px 60px;
+      text-align: center;
+    }
+
+    .hero-glow {
+      position: absolute;
+      width: 700px;
+      height: 700px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0, 212, 255, 0.06) 0%, transparent 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      animation: pulse 6s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 0.5;
+        transform: translate(-50%, -50%) scale(1);
+      }
+
+      50% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.15);
+      }
+    }
+
+    /* PIXEL ART SCENE - the living office */
+    .scene-wrap {
+      width: 100%;
+      max-width: 640px;
+      margin: 0 auto 40px;
+      position: relative;
+      height: 200px;
+      image-rendering: pixelated;
+      overflow: hidden;
+      border: 2px solid var(--border);
+      border-radius: 6px;
+      background: #0a0e14;
+    }
+
+    .scene-canvas {
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+    }
+
+    .hero-badge {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--cyan);
+      padding: 5px 14px;
+      border: 1px solid rgba(0, 212, 255, 0.3);
+      border-radius: 16px;
+      background: rgba(0, 212, 255, 0.06);
+      margin-bottom: 28px;
+      display: inline-block;
+    }
+
+    .hero-title {
+      font-family: 'Orbitron', monospace;
+      font-size: clamp(40px, 7vw, 80px);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: 6px;
+      margin-bottom: 20px;
+    }
+
+    .t-cyan {
+      color: var(--cyan);
+      text-shadow: 0 0 30px var(--cyan), 0 0 60px rgba(0, 212, 255, 0.2);
+    }
+
+    .t-orange {
+      color: var(--orange);
+      text-shadow: 0 0 30px var(--orange), 0 0 60px rgba(255, 107, 53, 0.2);
+    }
+
+    .hero-sub {
+      font-size: clamp(16px, 2.2vw, 22px);
+      color: var(--text2);
+      max-width: 600px;
+      line-height: 1.6;
+      margin-bottom: 40px;
+    }
+
+    .hero-btns {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn-primary {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      padding: 14px 36px;
+      background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(0, 212, 255, 0.08));
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      border-radius: 4px;
+      cursor: pointer;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      text-decoration: none;
+      transition: all 0.3s;
+    }
+
+    .btn-primary:hover {
+      background: rgba(0, 212, 255, 0.3);
+      box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
+    }
+
+    .btn-secondary {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      padding: 14px 36px;
+      background: rgba(255, 107, 53, 0.08);
+      border: 1px solid rgba(255, 107, 53, 0.4);
+      color: var(--orange);
+      border-radius: 4px;
+      cursor: pointer;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      text-decoration: none;
+      transition: all 0.3s;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 107, 53, 0.2);
+      box-shadow: 0 0 30px rgba(255, 107, 53, 0.3);
+    }
+
+    /* SECTION */
+    section {
+      padding: 80px 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+      scroll-margin-top: 70px;
+    }
+
+    .section-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-family: 'Orbitron', monospace;
+      font-size: clamp(24px, 4vw, 40px);
+      font-weight: 700;
+      margin-bottom: 16px;
+      letter-spacing: 2px;
+    }
+
+    .section-desc {
+      font-size: 17px;
+      color: var(--text2);
+      max-width: 600px;
+      line-height: 1.6;
+      margin-bottom: 48px;
+    }
+
+    /* AGENT CARDS */
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .agent-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    .agent-card:hover {
+      border-color: var(--cyan);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 40px rgba(0, 212, 255, 0.1);
+    }
+
+    .agent-sprite {
+      width: 64px;
+      height: 64px;
+      image-rendering: pixelated;
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .agent-sprite canvas {
+      width: 64px;
+      height: 64px;
+      image-rendering: pixelated;
+    }
+
+    .agent-name {
+      font-family: 'Orbitron', monospace;
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .agent-role {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      padding: 3px 8px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    .agent-desc {
+      font-size: 14px;
+      color: var(--text2);
+      line-height: 1.5;
+    }
+
+    /* FEATURES */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 28px;
+      transition: all 0.3s;
+    }
+
+    .feature-card:hover {
+      border-color: var(--cyan);
+      box-shadow: 0 0 30px rgba(0, 212, 255, 0.08);
+    }
+
+    .feature-icon {
+      font-size: 36px;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .feature-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+    }
+
+    .feature-text {
+      font-size: 14px;
+      color: var(--text2);
+      line-height: 1.6;
+    }
+
+    /* ARCHITECTURE */
+    .arch-flow {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 40px 0;
+    }
+
+    .arch-node {
+      background: var(--bg2);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      text-align: center;
+      min-width: 130px;
+      position: relative;
+      transition: all 0.3s;
+    }
+
+    .arch-node:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 30px rgba(0, 212, 255, 0.1);
+    }
+
+    .arch-node canvas {
+      width: 48px;
+      height: 48px;
+      image-rendering: pixelated;
+      margin-bottom: 8px;
+    }
+
+    .arch-node-title {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .arch-node-sub {
+      font-size: 11px;
+      color: var(--text2);
+      margin-top: 4px;
+    }
+
+    .arch-arrow {
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      color: var(--cyan);
+      font-size: 24px;
+      animation: arrowPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes arrowPulse {
+
+      0%,
+      100% {
+        opacity: 0.4;
+      }
+
+      50% {
+        opacity: 1;
+      }
+    }
+
+    .n-cyan {
+      border-color: rgba(0, 212, 255, 0.4);
+    }
+
+    .n-orange {
+      border-color: rgba(255, 107, 53, 0.4);
+    }
+
+    .n-green {
+      border-color: rgba(127, 255, 0, 0.4);
+    }
+
+    .n-yellow {
+      border-color: rgba(255, 204, 0, 0.4);
+    }
+
+    .n-purple {
+      border-color: rgba(180, 100, 255, 0.4);
+    }
+
+    /* STATS */
+    .stats-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      margin: 48px 0;
+    }
+
+    .stat-box {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px 36px;
+      text-align: center;
+      min-width: 160px;
+    }
+
+    .stat-num {
+      font-family: 'Orbitron', monospace;
+      font-size: 36px;
+      font-weight: 900;
+      color: var(--cyan);
+      text-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+    }
+
+    .stat-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      color: var(--text2);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-top: 6px;
+    }
+
+    /* CHAT DEMO */
+    .chat-demo {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      max-width: 700px;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+
+    .chat-hdr {
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .chat-hdr-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .chat-hdr-title {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 1px;
+      color: var(--text2);
+    }
+
+    .chat-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 300px;
+    }
+
+    .chat-msg {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+    }
+
+    .chat-msg.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .chat-msg canvas {
+      width: 32px;
+      height: 32px;
+      image-rendering: pixelated;
+      flex-shrink: 0;
+      border-radius: 4px;
+    }
+
+    .chat-bubble {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      max-width: 480px;
+    }
+
+    .chat-bubble-name {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .chat-bubble-text {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text);
+    }
+
+    /* TECH STACK */
+    .tech-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .tech-badge {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg2);
+      color: var(--text2);
+      letter-spacing: 1px;
+      transition: all 0.3s;
+    }
+
+    .tech-badge:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    /* FOOTER */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 20px;
+      text-align: center;
+      margin-top: 60px;
+    }
+
+    .footer-logo {
+      font-family: 'Orbitron', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--cyan);
+      letter-spacing: 3px;
+      margin-bottom: 12px;
+    }
+
+    .footer-logo span {
+      color: var(--orange);
+    }
+
+    .footer-text {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      color: var(--text2);
+      letter-spacing: 1px;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      margin-top: 16px;
+    }
+
+    .footer-links a {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      color: var(--text2);
+      text-decoration: none;
+      letter-spacing: 1px;
+      transition: color 0.3s;
+    }
+
+    .footer-links a:hover {
+      color: var(--cyan);
+    }
+
+    /* DIVIDER */
+    .divider {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 0 auto;
+    }
+
+    /* RESPONSIVE */
+    @media(max-width:768px) {
+      .nav {
+        padding: 0 16px;
+      }
+
+      .nav-links {
+        gap: 16px;
+      }
+
+      .hero {
+        padding: 80px 16px 40px;
+      }
+
+      section {
+        padding: 48px 16px;
+      }
+
+      .arch-flow {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .arch-arrow {
+        transform: rotate(90deg);
+        padding: 8px 0;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <a href="#" class="nav-logo">PIXEL<span>CLAW</span></a>
+    <div class="nav-links">
+      <a href="#agents">Agents</a>
+      <a href="#features">Features</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#chat">Chat</a>
+      <a href="pixelclaw-architecture.html">Docs</a>
+      <a href="https://github.com/Ghenghis/PixelClaw/releases/latest" class="btn-dl">Download</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-glow"></div>
+    <div class="scene-wrap">
+      <canvas id="scene" class="scene-canvas"></canvas>
+    </div>
+    <div class="hero-badge">v0.1.0 &middot; Local-First &middot; Multi-Agent &middot; Multi-Model</div>
+    <h1 class="hero-title"><span class="t-cyan">PIXEL</span><span class="t-orange">CLAW</span></h1>
+    <p class="hero-sub">Your AI agents, <strong>alive in your editor.</strong> A local-first visual agent platform with
+      inter-agent chat, dynamic model switching, and pixel-art characters that react to real work.</p>
+    <div class="hero-btns">
+      <a href="https://github.com/Ghenghis/PixelClaw/releases/latest" class="btn-primary">&#9660; Download VSIX</a>
+      <a href="https://github.com/Ghenghis/PixelClaw" class="btn-secondary">&#9733; GitHub</a>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- AGENTS -->
+  <section id="agents">
+    <div class="section-label">// Meet the Crew</div>
+    <h2 class="section-title">Agent Roster</h2>
+    <p class="section-desc">Each agent is a pixel-art character with specialized capabilities, its own model binding,
+      and the ability to chat with other agents seamlessly.</p>
+    <div class="agents-grid" id="agents-grid"></div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <div class="section-label">// Capabilities</div>
+    <h2 class="section-title">Core Features</h2>
+    <p class="section-desc">Built for real development workflows with failsafes, retry logic, and backup plans at every
+      layer.</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="feature-icon">&#x1F4AC;</span>
+        <div class="feature-title">Inter-Agent Chat</div>
+        <div class="feature-text">Agents communicate through a message bus with threading, priority routing, broadcast,
+          and direct messaging. Conversations are persisted in shared memory.</div>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">&#x1F504;</span>
+        <div class="feature-title">Seamless Model Switching</div>
+        <div class="feature-text">Switch any agent to a different LM Studio model mid-conversation. Context is
+          summarized, stored in memory, and replayed to the new model automatically.</div>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">&#x1F9E0;</span>
+        <div class="feature-title">Shared Memory Store</div>
+        <div class="feature-text">Persistent JSON-backed memory for conversation summaries, project state, task results,
+          and agent knowledge. Atomic writes prevent corruption.</div>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">&#x1F6E1;</span>
+        <div class="feature-title">Retry &amp; Failsafes</div>
+        <div class="feature-text">Exponential backoff retry, circuit breakers, fallback models per role, health checks,
+          and automatic error recovery keep agents running.</div>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">&#x1F3AE;</span>
+        <div class="feature-title">Pixel Art Characters</div>
+        <div class="feature-text">Animated pixel-art agents live inside VS Code. They react to real agent activity
+          &mdash; coding, thinking, chatting, switching models &mdash; in real time.</div>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">&#x1F5A5;</span>
+        <div class="feature-title">52 Model Registry</div>
+        <div class="feature-text">Pre-configured model registry with 52 LLMs organized by role: code, reasoning, vision,
+          tool use, chat, and Evony specialization. VRAM-aware scheduling.</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ARCHITECTURE -->
+  <section id="architecture">
+    <div class="section-label">// System Design</div>
+    <h2 class="section-title">Architecture</h2>
+    <p class="section-desc">Five layers working together, from the pixel-art UI to the model inference engine.</p>
+    <div class="arch-flow" id="arch-flow"></div>
+    <div style="text-align:center;margin-top:24px;">
+      <a href="pixelclaw-architecture.html" class="btn-dl" style="font-size:12px;">View Full Architecture Dashboard
+        &rarr;</a>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- STATS -->
+  <section style="text-align:center;">
+    <div class="section-label">// By the Numbers</div>
+    <h2 class="section-title">Project Stats</h2>
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-num">7</div>
+        <div class="stat-label">Agent Roles</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">52</div>
+        <div class="stat-label">Models</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">5</div>
+        <div class="stat-label">System Layers</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">6</div>
+        <div class="stat-label">Core Modules</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">&infin;</div>
+        <div class="stat-label">Retry Loops</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- CHAT DEMO -->
+  <section id="chat" style="text-align:center;">
+    <div class="section-label">// Live Demo</div>
+    <h2 class="section-title">Agent Chat in Action</h2>
+    <p class="section-desc" style="margin-left:auto;margin-right:auto;">Agents collaborate through threaded
+      conversations, delegate tasks, and hand off context seamlessly.</p>
+    <div class="chat-demo" id="chat-demo">
+      <div class="chat-hdr">
+        <div class="chat-hdr-dot" style="background:var(--green);box-shadow:0 0 6px var(--green);"></div>
+        <div class="chat-hdr-title">THREAD: Fix login bug in auth.ts</div>
+        <div style="margin-left:auto;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text2);">3
+          AGENTS ACTIVE</div>
+      </div>
+      <div class="chat-body" id="chat-body"></div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- TECH -->
+  <section style="text-align:center;">
+    <div class="section-label">// Tech Stack</div>
+    <h2 class="section-title">Built With</h2>
+    <div class="tech-grid" style="margin-top:32px;">
+      <div class="tech-badge">TypeScript</div>
+      <div class="tech-badge">React</div>
+      <div class="tech-badge">Vite</div>
+      <div class="tech-badge">VS Code Extension API</div>
+      <div class="tech-badge">LM Studio</div>
+      <div class="tech-badge">Playwright</div>
+      <div class="tech-badge">Node.js</div>
+      <div class="tech-badge">ESBuild</div>
+      <div class="tech-badge">GitHub Actions</div>
+      <div class="tech-badge">MCP Protocol</div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-logo">PIXEL<span>CLAW</span></div>
+    <div class="footer-text">Your AI agent, alive in your editor.</div>
+    <div class="footer-links">
+      <a href="https://github.com/Ghenghis/PixelClaw">GitHub</a>
+      <a href="https://github.com/Ghenghis/PixelClaw/releases">Releases</a>
+      <a href="pixelclaw-architecture.html">Architecture</a>
+      <a href="AGENT_CHAT_SYSTEM.md">Agent Chat Docs</a>
+    </div>
+  </footer>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+     PIXEL ART ENGINE — sprites, scene, animations
+     ═══════════════════════════════════════════════════════════════ -->
+  <script>
+    // ─── Pixel Art Sprite Data (16x16 grids, hex color per pixel, 0=transparent) ───
+    const SPRITES = {
+      orchestrator: {
+        name: 'Orchestrator', role: 'orchestrator', color: '#ffffff',
+        roleColor: 'rgba(200,216,232,0.15)', roleBorder: 'rgba(200,216,232,0.3)',
+        desc: 'Decomposes tasks, delegates to specialists, tracks progress across all agents.',
+        pixels: [
+          '0000000110000000',
+          '0000001ee1000000',
+          '0000001ee1000000',
+          '000001eeee100000',
+          '00001eeeeee10000',
+          '0000feeeeeef0000',
+          '0000ffeeee0f0000',
+          '00000feeeef00000',
+          '000000feef000000',
+          '00000faaaaf00000',
+          '0000faaaaaf00000',
+          '000faaafaaaf0000',
+          '0000000a0000a000',
+          '000000aa00000000',
+          '00000aa0a0000000',
+          '00000a000a000000',
+        ],
+        palette: { 1: '#1a2535', e: '#e8e8ff', f: '#c0c0e0', a: '#6060aa', 0: null }
+      },
+      code: {
+        name: 'CodeBot', role: 'code', color: '#00d4ff',
+        roleColor: 'rgba(0,212,255,0.12)', roleBorder: 'rgba(0,212,255,0.3)',
+        desc: 'Writes, edits, reviews, and debugs code with proper error handling and tests.',
+        pixels: [
+          '0000001111000000',
+          '000011cccc110000',
+          '00001cccccc10000',
+          '0000fccccccf0000',
+          '0000fc11c1cf0000',
+          '0000fccccccf0000',
+          '00000fcccf000000',
+          '000000fccf000000',
+          '00000fbbbf000000',
+          '0000fbbbbbbf0000',
+          '000fbbb22bbbf000',
+          '000fbb2222bbf000',
+          '0000000bb000f000',
+          '00000bbbb0000000',
+          '0000bb00bb000000',
+          '0000b0000b000000',
+        ],
+        palette: { 1: '#0a1a2a', c: '#00d4ff', f: '#0088aa', b: '#004466', 2: '#00ffff', 0: null }
+      },
+      thinker: {
+        name: 'Thinker', role: 'reasoning', color: '#b464ff',
+        roleColor: 'rgba(180,100,255,0.12)', roleBorder: 'rgba(180,100,255,0.3)',
+        desc: 'Analyzes problems, plans architecture, and makes design decisions step by step.',
+        pixels: [
+          '00000yyyy0000000',
+          '0000yyyyyyyy0000',
+          '000000yyyy000000',
+          '000011pppp110000',
+          '00001pppppp10000',
+          '0000fppppppf0000',
+          '0000fp11p1pf0000',
+          '0000fpppppff0000',
+          '00000fppf0000000',
+          '000000fpf0000000',
+          '00000faaaf000000',
+          '0000faaaaaf00000',
+          '000faaafaaaf0000',
+          '0000000a00000000',
+          '00000aa0aa000000',
+          '00000a0000a00000',
+        ],
+        palette: { 1: '#1a1030', p: '#b464ff', f: '#7a3aaa', a: '#5a2a8a', y: '#ffcc00', 0: null }
+      },
+      eyebot: {
+        name: 'EyeBot', role: 'vision', color: '#7fff00',
+        roleColor: 'rgba(127,255,0,0.12)', roleBorder: 'rgba(127,255,0,0.3)',
+        desc: 'Analyzes screenshots, UI layouts, images, and identifies visual issues.',
+        pixels: [
+          '0000001111000000',
+          '000011gggg110000',
+          '00001gggggg10000',
+          '0000fggggggf0000',
+          '0000fgGGgGgf0000',
+          '0000fgGGgggf0000',
+          '00000fgggf000000',
+          '000000fggf000000',
+          '00000fdddf000000',
+          '0000fdddddf00000',
+          '000fddd33dddf000',
+          '000fdd3333ddf000',
+          '0000000dd000f000',
+          '00000dddd0000000',
+          '0000dd00dd000000',
+          '0000d0000d000000',
+        ],
+        palette: { 1: '#0a200a', g: '#7fff00', G: '#ffffff', f: '#4a9a00', d: '#2a5a00', 3: '#aaff44', 0: null }
+      },
+      toolbot: {
+        name: 'ToolBot', role: 'tool_use', color: '#ff6b35',
+        roleColor: 'rgba(255,107,53,0.12)', roleBorder: 'rgba(255,107,53,0.3)',
+        desc: 'Executes MCP tools, calls functions, and interacts with external services.',
+        pixels: [
+          '0000001111000000',
+          '000011oooo110000',
+          '00001oooooo10000',
+          '0000foooooof0000',
+          '0000fo11o1of0000',
+          '0000foooooof0000',
+          '00000foof0000000',
+          '000000foof000000',
+          '00000frrrf000000',
+          '0000frrrrrf00000',
+          '000frrr55rrrf000',
+          '000frr5555rrf000',
+          '0000000rr000f000',
+          '00000rrrr0000000',
+          '0000rr00rr000000',
+          '0000r0000r000000',
+        ],
+        palette: { 1: '#2a1508', o: '#ff6b35', f: '#aa4520', r: '#662a10', 5: '#ffaa66', 0: null }
+      },
+      chatbot: {
+        name: 'ChatBot', role: 'chat', color: '#ffcc00',
+        roleColor: 'rgba(255,204,0,0.12)', roleBorder: 'rgba(255,204,0,0.3)',
+        desc: 'Handles conversations, documentation, and clear explanations.',
+        pixels: [
+          '000yyyy00000y000',
+          '00yyyyyyyy0yy000',
+          '000000yyyy0y0000',
+          '000011ssss110000',
+          '00001ssssss10000',
+          '0000fsssssssf000',
+          '0000fs11s1sf0000',
+          '0000fssssssf0000',
+          '00000fssf0000000',
+          '000000fsf0000000',
+          '00000faaaf000000',
+          '0000faaaaaf00000',
+          '000faaafaaaf0000',
+          '0000000a00000000',
+          '00000aa0aa000000',
+          '00000a0000a00000',
+        ],
+        palette: { 1: '#2a2200', s: '#ffcc00', f: '#aa8800', a: '#665500', y: '#ffee88', 0: null }
+      },
+      evony: {
+        name: 'EvonyBot', role: 'evony', color: '#ff3355',
+        roleColor: 'rgba(255,51,85,0.12)', roleBorder: 'rgba(255,51,85,0.3)',
+        desc: 'Deep Evony game knowledge — mechanics, APIs, data analysis, strategy.',
+        pixels: [
+          '00000ggggg000000',
+          '0000ggggggg00000',
+          '0000gg000gg00000',
+          '000011eeee110000',
+          '00001eeeeee10000',
+          '0000feeeeeef0000',
+          '0000fe11e1ef0000',
+          '0000feeeeeef0000',
+          '00000feef0000000',
+          '000000fef0000000',
+          '00000frrrf000000',
+          '0000frrrrrf00000',
+          '000frrr77rrrf000',
+          '0000000rr000f000',
+          '00000rr00rr00000',
+          '00000r0000r00000',
+        ],
+        palette: { 1: '#2a0a10', e: '#ff3355', f: '#aa2040', r: '#661020', g: '#ffcc00', 7: '#ff6688', 0: null }
+      },
+    };
+
+    // ─── Render a sprite to a canvas ───
+    function renderSprite(canvas, spriteData, scale) {
+      scale = scale || 4;
+      const s = spriteData.pixels[0].length;
+      canvas.width = s * scale;
+      canvas.height = spriteData.pixels.length * scale;
+      canvas.style.width = (s * scale) + 'px';
+      canvas.style.height = (spriteData.pixels.length * scale) + 'px';
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      const pal = spriteData.palette;
+      for (let y = 0; y < spriteData.pixels.length; y++) {
+        const row = spriteData.pixels[y];
+        for (let x = 0; x < row.length; x++) {
+          const c = pal[row[x]];
+          if (c) {
+            ctx.fillStyle = c;
+            ctx.fillRect(x * scale, y * scale, scale, scale);
+          }
+        }
+      }
+    }
+
+    // ─── Build Agent Cards ───
+    function buildAgentCards() {
+      const grid = document.getElementById('agents-grid');
+      Object.entries(SPRITES).forEach(([key, sp]) => {
+        const card = document.createElement('div');
+        card.className = 'agent-card';
+        const cvs = document.createElement('canvas');
+        renderSprite(cvs, sp, 4);
+        card.innerHTML = `
+      <div class="agent-sprite"></div>
+      <div class="agent-name" style="color:${sp.color}">${sp.name}</div>
+      <div class="agent-role" style="background:${sp.roleColor};color:${sp.color};border:1px solid ${sp.roleBorder}">${sp.role.toUpperCase()}</div>
+      <div class="agent-desc">${sp.desc}</div>
+    `;
+        card.querySelector('.agent-sprite').appendChild(cvs);
+        grid.appendChild(card);
+      });
+    }
+
+    // ─── Build Architecture Flow ───
+    function buildArchFlow() {
+      const flow = document.getElementById('arch-flow');
+      const nodes = [
+        { title: 'PixelAgents UI', sub: 'VS Code Webview', cls: 'n-cyan', sprite: 'code' },
+        { title: 'Message Bus', sub: 'Threading + Priority', cls: 'n-orange', sprite: 'orchestrator' },
+        { title: 'Orchestrator', sub: 'Task Delegation', cls: 'n-purple', sprite: 'thinker' },
+        { title: 'Model Manager', sub: 'LM Studio API', cls: 'n-yellow', sprite: 'toolbot' },
+        { title: 'Memory Store', sub: 'Persistent JSON', cls: 'n-green', sprite: 'eyebot' },
+      ];
+      nodes.forEach((n, i) => {
+        const div = document.createElement('div');
+        div.className = 'arch-node ' + n.cls;
+        const cvs = document.createElement('canvas');
+        renderSprite(cvs, SPRITES[n.sprite], 3);
+        div.appendChild(cvs);
+        const t = document.createElement('div');
+        t.className = 'arch-node-title';
+        t.textContent = n.title;
+        div.appendChild(t);
+        const s = document.createElement('div');
+        s.className = 'arch-node-sub';
+        s.textContent = n.sub;
+        div.appendChild(s);
+        flow.appendChild(div);
+        if (i < nodes.length - 1) {
+          const arrow = document.createElement('div');
+          arrow.className = 'arch-arrow';
+          arrow.innerHTML = '&#x27A1;';
+          arrow.style.animationDelay = (i * 0.3) + 's';
+          flow.appendChild(arrow);
+        }
+      });
+    }
+
+    // ─── Chat Demo ───
+    function buildChatDemo() {
+      const body = document.getElementById('chat-body');
+      const msgs = [
+        {
+          sprite: 'orchestrator', name: 'Orchestrator', color: '#e8e8ff',
+          text: 'Login bug reported in auth.ts. Delegating to CodeBot for analysis. EyeBot, standby for UI verification.'
+        },
+        {
+          sprite: 'code', name: 'CodeBot', color: '#00d4ff',
+          text: 'Found the issue &mdash; the JWT token expiry check is comparing seconds vs milliseconds. Fixing now with <code style="color:#7fff00">Date.now()</code> alignment.'
+        },
+        {
+          sprite: 'code', name: 'CodeBot', color: '#00d4ff',
+          text: 'Fix applied. Switching to reasoning model for edge-case analysis... <span style="color:#ffcc00">[MODEL SWITCH: code-7b &rarr; gpt-oss-20b]</span>'
+        },
+        {
+          sprite: 'thinker', name: 'Thinker', color: '#b464ff',
+          text: 'Edge cases reviewed: timezone offsets, leap seconds, and clock skew are all handled. The fix is solid. Handing back to CodeBot for tests.'
+        },
+        {
+          sprite: 'eyebot', name: 'EyeBot', color: '#7fff00',
+          text: 'UI verified &mdash; login form now correctly redirects after auth. No visual regressions detected in the dashboard layout.'
+        },
+        {
+          sprite: 'orchestrator', name: 'Orchestrator', color: '#e8e8ff',
+          text: 'Task complete. All agents confirmed fix. Storing result in shared memory. &check;'
+        },
+      ];
+      msgs.forEach((m, i) => {
+        const row = document.createElement('div');
+        row.className = 'chat-msg';
+        row.dataset.delay = String(i * 300);
+        const cvs = document.createElement('canvas');
+        renderSprite(cvs, SPRITES[m.sprite], 2);
+        row.appendChild(cvs);
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble';
+        bubble.innerHTML = `<div class="chat-bubble-name" style="color:${m.color}">${m.name}</div><div class="chat-bubble-text">${m.text}</div>`;
+        row.appendChild(bubble);
+        body.appendChild(row);
+      });
+    }
+
+    // ─── Animated Scene (Hero Canvas) ───
+    function initScene() {
+      const canvas = document.getElementById('scene');
+      const dpr = window.devicePixelRatio || 1;
+      const W = canvas.parentElement.clientWidth;
+      const H = canvas.parentElement.clientHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      ctx.imageSmoothingEnabled = false;
+
+      // Pre-render agent sprites to offscreen canvases
+      const spriteKeys = Object.keys(SPRITES);
+      const offscreens = {};
+      spriteKeys.forEach(k => {
+        const oc = document.createElement('canvas');
+        renderSprite(oc, SPRITES[k], 3);
+        offscreens[k] = oc;
+      });
+
+      // Agent positions and movement
+      const agents = spriteKeys.map((k, i) => ({
+        key: k,
+        x: 40 + i * 85,
+        y: H - 70,
+        vx: (Math.random() - 0.5) * 0.6,
+        bobPhase: Math.random() * Math.PI * 2,
+        talking: false,
+        talkTimer: 0,
+      }));
+
+      // Speech bubbles
+      const bubbles = [];
+      const phrases = ['fixing bug...', 'analyzing...', 'switching model', 'task done!', 'reviewing code', 'thinking...', 'scanning UI', 'routing msg'];
+
+      // Particles (floating data bits)
+      const particles = [];
+      for (let i = 0; i < 30; i++) {
+        particles.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          vx: (Math.random() - 0.5) * 0.3,
+          vy: -Math.random() * 0.4 - 0.1,
+          char: ['0', '1', '<', '>', '{', '}', 'fn', '()', '[]', '//'][Math.floor(Math.random() * 10)],
+          alpha: Math.random() * 0.3 + 0.1,
+          size: Math.random() * 6 + 6,
+        });
+      }
+
+      // Floor tiles
+      function drawFloor() {
+        ctx.fillStyle = '#0d1520';
+        ctx.fillRect(0, H - 30, W, 30);
+        for (let x = 0; x < W; x += 20) {
+          ctx.strokeStyle = 'rgba(0,212,255,0.06)';
+          ctx.strokeRect(x, H - 30, 20, 30);
+        }
+      }
+
+      // Desks
+      function drawDesks() {
+        for (let i = 0; i < 4; i++) {
+          const dx = 60 + i * 150;
+          ctx.fillStyle = '#1a2535';
+          ctx.fillRect(dx, H - 45, 50, 6);
+          ctx.fillStyle = '#111922';
+          ctx.fillRect(dx + 5, H - 39, 4, 12);
+          ctx.fillRect(dx + 41, H - 39, 4, 12);
+          // Monitor
+          ctx.fillStyle = '#0a1018';
+          ctx.fillRect(dx + 10, H - 65, 30, 20);
+          ctx.fillStyle = 'rgba(0,212,255,0.15)';
+          ctx.fillRect(dx + 12, H - 63, 26, 16);
+        }
+      }
+
+      function tick() {
+        ctx.clearRect(0, 0, W, H);
+
+        // Background gradient
+        const grad = ctx.createLinearGradient(0, 0, 0, H);
+        grad.addColorStop(0, '#060a0f');
+        grad.addColorStop(1, '#0a1018');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+
+        // Grid lines
+        ctx.strokeStyle = 'rgba(0,212,255,0.03)';
+        for (let x = 0; x < W; x += 30) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+        for (let y = 0; y < H; y += 30) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+        drawFloor();
+        drawDesks();
+
+        // Particles
+        particles.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.y < -10) { p.y = H + 10; p.x = Math.random() * W; }
+          if (p.x < -10) p.x = W + 10;
+          if (p.x > W + 10) p.x = -10;
+          ctx.font = p.size + 'px Share Tech Mono, monospace';
+          ctx.fillStyle = `rgba(0,212,255,${p.alpha})`;
+          ctx.fillText(p.char, p.x, p.y);
+        });
+
+        // Agents
+        const now = Date.now();
+        agents.forEach(a => {
+          a.x += a.vx;
+          if (a.x < 20 || a.x > W - 60) a.vx *= -1;
+          const bob = Math.sin(now / 400 + a.bobPhase) * 2;
+
+          ctx.drawImage(offscreens[a.key], Math.round(a.x), Math.round(a.y + bob));
+
+          // Random talking
+          if (Math.random() < 0.002 && !a.talking) {
+            a.talking = true;
+            a.talkTimer = now + 2000;
+            bubbles.push({
+              x: a.x + 24,
+              y: a.y - 10,
+              text: phrases[Math.floor(Math.random() * phrases.length)],
+              expire: now + 2000,
+              color: SPRITES[a.key].color,
+            });
+          }
+          if (now > a.talkTimer) a.talking = false;
+        });
+
+        // Bubbles
+        for (let i = bubbles.length - 1; i >= 0; i--) {
+          const b = bubbles[i];
+          if (now > b.expire) { bubbles.splice(i, 1); continue; }
+          const alpha = Math.max(0, (b.expire - now) / 2000);
+          ctx.font = '9px Share Tech Mono, monospace';
+          const tw = ctx.measureText(b.text).width;
+          ctx.fillStyle = `rgba(12,18,25,${alpha * 0.9})`;
+          ctx.strokeStyle = `rgba(0,212,255,${alpha * 0.3})`;
+          const bx = b.x - tw / 2 - 6;
+          const by = b.y - 14;
+          ctx.beginPath();
+          ctx.roundRect(bx, by, tw + 12, 16, 4);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = b.color.replace(')', `,${alpha})`).replace('rgb', 'rgba').replace('#', '');
+          // Handle hex color alpha
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = b.color;
+          ctx.fillText(b.text, b.x - tw / 2, b.y - 2);
+          ctx.globalAlpha = 1;
+          b.y -= 0.3;
+        }
+
+        // Connection lines between random agents
+        if (Math.random() < 0.01) {
+          const a1 = agents[Math.floor(Math.random() * agents.length)];
+          const a2 = agents[Math.floor(Math.random() * agents.length)];
+          if (a1 !== a2) {
+            ctx.strokeStyle = 'rgba(0,212,255,0.1)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(a1.x + 24, a1.y + 24);
+            ctx.lineTo(a2.x + 24, a2.y + 24);
+            ctx.stroke();
+          }
+        }
+
+        requestAnimationFrame(tick);
+      }
+
+      tick();
+    }
+
+    // ─── Intersection Observer for chat messages ───
+    function initChatObserver() {
+      const chatBody = document.getElementById('chat-body');
+      if (!chatBody) return;
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const msgs = chatBody.querySelectorAll('.chat-msg');
+            msgs.forEach(msg => {
+              const delay = parseInt(msg.dataset.delay || '0', 10);
+              setTimeout(() => msg.classList.add('visible'), delay);
+            });
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.2 });
+      observer.observe(chatBody);
+    }
+
+    // ─── Init ───
+    document.addEventListener('DOMContentLoaded', () => {
+      buildAgentCards();
+      buildArchFlow();
+      buildChatDemo();
+      initScene();
+      initChatObserver();
+    });
+
+    // Nav scroll effect
+    window.addEventListener('scroll', () => {
+      document.querySelector('.nav').classList.toggle('scrolled', window.scrollY > 50);
+    });
+  </script>
+</body>
+
+</html>
